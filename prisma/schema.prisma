@@ -1,0 +1,173 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  accounts      Account[]
+  sessions      Session[]
+  messages      Message[]
+  workflows     Workflow[]
+  workflowExecutions WorkflowExecution[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([email])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Chat {
+  id        String    @id @default(cuid())
+  name      String
+  messages  Message[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([createdAt])
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  content   String   @db.Text
+  chatId    String
+  userId    String
+  chat      Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([chatId, createdAt])
+  @@index([userId])
+}
+
+model Workflow {
+  id          String              @id @default(cuid())
+  name        String
+  description String?             @db.Text
+  definition  Json
+  createdById String
+  createdBy   User                @relation(fields: [createdById], references: [id])
+  nodes       WorkflowNode[]
+  executions  WorkflowExecution[]
+  isActive    Boolean             @default(true)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  @@index([createdById])
+  @@index([isActive])
+}
+
+model WorkflowNode {
+  id         String   @id @default(cuid())
+  workflowId String
+  workflow   Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  nodeId     String
+  type       String
+  data       Json
+  position   Json
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([workflowId, nodeId])
+  @@index([workflowId])
+}
+
+model WorkflowExecution {
+  id         String                @id @default(cuid())
+  workflowId String
+  workflow   Workflow              @relation(fields: [workflowId], references: [id])
+  userId     String
+  user       User                  @relation(fields: [userId], references: [id])
+  status     WorkflowExecutionStatus @default(PENDING)
+  steps      WorkflowStep[]
+  currentStepId String?
+  result     Json?
+  error      String?               @db.Text
+  startedAt  DateTime              @default(now())
+  completedAt DateTime?
+  createdAt  DateTime              @default(now())
+  updatedAt  DateTime              @updatedAt
+
+  @@index([workflowId])
+  @@index([userId])
+  @@index([status])
+}
+
+model WorkflowStep {
+  id                  String            @id @default(cuid())
+  executionId         String
+  execution           WorkflowExecution @relation(fields: [executionId], references: [id], onDelete: Cascade)
+  nodeId              String
+  status              StepStatus        @default(PENDING)
+  input               Json?
+  output              Json?
+  error               String?           @db.Text
+  startedAt           DateTime?
+  completedAt         DateTime?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  @@index([executionId])
+  @@index([status])
+}
+
+enum WorkflowExecutionStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum StepStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  SKIPPED
+}
