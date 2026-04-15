@@ -77,7 +77,9 @@ export default function WorkflowBuilder() {
   }, [nodeId, setNodes])
 
   const deleteSelectedNodes = useCallback(() => {
-    setNodes((nds: Node<CustomNodeData>[]) => nds.filter((node: Node<CustomNodeData>) => !node.selected))
+    setNodes((nds: Node<CustomNodeData>[]) =>
+      nds.filter((node: Node<CustomNodeData>) => !node.selected)
+    )
     setEdges((eds: Edge[]) =>
       eds.filter((edge: Edge) => {
         const sourceNode = nodes.find((n: Node<CustomNodeData>) => n.id === edge.source)
@@ -88,17 +90,17 @@ export default function WorkflowBuilder() {
   }, [setNodes, setEdges, nodes])
 
   return (
-    <div className="w-full h-screen flex flex-col">
-      <div className="bg-card border-b p-4 flex gap-2">
+    <div className="flex h-screen w-full flex-col">
+      <div className="flex gap-2 border-b bg-card p-4">
         <button
           onClick={addNode}
-          className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
+          className="rounded-md bg-primary px-4 py-2 text-primary-foreground transition-colors hover:bg-primary/90"
         >
           Add Node
         </button>
         <button
           onClick={deleteSelectedNodes}
-          className="px-4 py-2 bg-destructive text-destructive-foreground rounded-md hover:bg-destructive/90 transition-colors"
+          className="rounded-md bg-destructive px-4 py-2 text-destructive-foreground transition-colors hover:bg-destructive/90"
         >
           Delete Selected
         </button>
@@ -114,11 +116,8 @@ export default function WorkflowBuilder() {
           fitView
           className="bg-background"
         >
-          <MiniMap
-            nodeStrokeWidth={3}
-            className="bg-card border border-border"
-          />
-          <Controls className="bg-card border border-border" />
+          <MiniMap nodeStrokeWidth={3} className="border border-border bg-card" />
+          <Controls className="border border-border bg-card" />
           <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
         </ReactFlow>
       </div>

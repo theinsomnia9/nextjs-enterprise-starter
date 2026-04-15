@@ -27,10 +27,8 @@ const sdk = new NodeSDK({
   resource: new Resource({
     [SemanticResourceAttributes.SERVICE_NAME]:
       process.env.OTEL_SERVICE_NAME || 'nextjs-boilerplate',
-    [SemanticResourceAttributes.SERVICE_VERSION]:
-      process.env.OTEL_SERVICE_VERSION || '0.1.0',
-    [SemanticResourceAttributes.DEPLOYMENT_ENVIRONMENT]:
-      process.env.NODE_ENV || 'development',
+    [SemanticResourceAttributes.SERVICE_VERSION]: process.env.OTEL_SERVICE_VERSION || '0.1.0',
+    [SemanticResourceAttributes.DEPLOYMENT_ENVIRONMENT]: process.env.NODE_ENV || 'development',
   }),
   traceExporter,
   metricReader: new PeriodicExportingMetricReader({

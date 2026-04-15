@@ -73,16 +73,23 @@ model Chat {
 }
 
 model Message {
-  id        String   @id @default(cuid())
-  content   String   @db.Text
+  id        String      @id @default(cuid())
+  role      MessageRole
+  content   String      @db.Text
   chatId    String
-  userId    String
-  chat      Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
+  userId    String?
+  chat      Chat        @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  user      User?       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime    @default(now())
 
   @@index([chatId, createdAt])
   @@index([userId])
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+  SYSTEM
 }
 
 model Workflow {

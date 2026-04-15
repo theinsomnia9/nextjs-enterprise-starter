@@ -11,10 +11,10 @@ export default function ThemeToggle() {
     setMounted(true)
     const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-    
+
     const initialTheme = savedTheme || (prefersDark ? 'dark' : 'light')
     setTheme(initialTheme)
-    
+
     if (initialTheme === 'dark') {
       document.documentElement.classList.add('dark')
     }
@@ -24,7 +24,7 @@ export default function ThemeToggle() {
     const newTheme = theme === 'light' ? 'dark' : 'light'
     setTheme(newTheme)
     localStorage.setItem('theme', newTheme)
-    
+
     if (newTheme === 'dark') {
       document.documentElement.classList.add('dark')
     } else {
@@ -35,7 +35,7 @@ export default function ThemeToggle() {
   if (!mounted) {
     return (
       <button
-        className="p-2 rounded-md border border-border bg-card hover:bg-accent transition-colors"
+        className="rounded-md border border-border bg-card p-2 transition-colors hover:bg-accent"
         aria-label="Toggle theme"
         disabled
       >
@@ -47,7 +47,7 @@ export default function ThemeToggle() {
   return (
     <button
       onClick={toggleTheme}
-      className="p-2 rounded-md border border-border bg-card hover:bg-accent transition-colors"
+      className="rounded-md border border-border bg-card p-2 transition-colors hover:bg-accent"
       aria-label="Toggle theme"
     >
       {theme === 'light' ? (

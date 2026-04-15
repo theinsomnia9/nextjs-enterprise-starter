@@ -1,9 +1,9 @@
 import { ReactElement } from 'react'
 import { render, RenderOptions } from '@testing-library/react'
+import { ThemeProvider } from '@/providers/ThemeProvider'
 
-// Custom render function with providers
 const AllTheProviders = ({ children }: { children: React.ReactNode }) => {
-  return <>{children}</>
+  return <ThemeProvider>{children}</ThemeProvider>
 }
 
 const customRender = (ui: ReactElement, options?: Omit<RenderOptions, 'wrapper'>) =>

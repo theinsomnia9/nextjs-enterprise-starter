@@ -10,9 +10,11 @@ const mockSpan = {
   end: vi.fn(),
 }
 
-const mockStartActiveSpan = vi.fn((_name: string, fn: (span: typeof mockSpan) => Promise<unknown>) => {
-  return fn(mockSpan)
-})
+const mockStartActiveSpan = vi.fn(
+  (_name: string, fn: (span: typeof mockSpan) => Promise<unknown>) => {
+    return fn(mockSpan)
+  }
+)
 
 const mockGetSpan = vi.fn()
 
