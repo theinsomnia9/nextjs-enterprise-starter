@@ -3,6 +3,16 @@ const nextConfig = {
   experimental: {
     instrumentationHook: true,
   },
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      // Ignore optional OpenTelemetry dependencies that are not installed
+      config.ignoreWarnings = [
+        { module: /node_modules\/@opentelemetry\/instrumentation-winston/ },
+        { module: /node_modules\/@opentelemetry\/sdk-node\/.*TracerProviderWithEnvExporter/ },
+      ]
+    }
+    return config
+  },
   async headers() {
     return [
       {
