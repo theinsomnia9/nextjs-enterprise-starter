@@ -154,11 +154,11 @@ export default function ChatPage() {
         )}
       >
         <div className="flex h-full flex-col">
-          <div className="flex items-center justify-between border-b border-gray-200 p-4 dark:border-gray-700">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Chat History</h2>
+          <div className="flex h-12 items-center justify-between border-b border-gray-200 p-4 dark:border-gray-700">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 lg:flex-1">Chat History</h2>
             <button
               onClick={() => setShowHistory(false)}
-              className="lg:hidden"
+              className="rounded-lg py-1 px-2 text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800 lg:hidden"
               aria-label="Close history"
             >
               <Menu className="h-5 w-5" />
@@ -178,8 +178,8 @@ export default function ChatPage() {
       </div>
 
       <div className="flex flex-1 flex-col">
-        <header className="flex items-center justify-between border-b border-gray-200 p-4 dark:border-gray-700">
-          <div className="flex items-center gap-4">
+        <header className="flex h-12 items-center justify-between border-b border-gray-200 p-4 dark:border-gray-700">
+          <div className="flex items-center gap-4 lg:flex-1">
             <button
               data-testid="chat-history-toggle"
               onClick={() => setShowHistory(!showHistory)}
@@ -188,12 +188,12 @@ export default function ChatPage() {
             >
               <Menu className="h-5 w-5 text-gray-600 dark:text-gray-400" />
             </button>
-            <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Chat</h1>
+            <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100 lg:hidden">Chat</h1>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={handleNewChat}
-              className="flex items-center gap-2 rounded-lg bg-blue-500 px-3 py-2 text-sm font-medium text-white hover:bg-blue-600"
+              className="flex items-center gap-2 rounded-lg bg-blue-500 px-3 py-1 text-sm font-medium text-white hover:bg-blue-600"
               aria-label="New chat"
             >
               <Plus className="h-4 w-4" />
@@ -202,7 +202,7 @@ export default function ChatPage() {
             <button
               data-testid="theme-toggle"
               onClick={toggleTheme}
-              className="rounded-lg p-2 text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
+              className="rounded-lg py-1 px-2 text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
               aria-label="Toggle theme"
             >
               {theme === 'light' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
