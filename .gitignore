@@ -46,7 +46,6 @@ prisma/dev.db
 prisma/dev.db-journal
 
 # IDEs
-.vscode/
 .idea/
 *.swp
 *.swo
