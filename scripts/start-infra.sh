@@ -5,11 +5,26 @@ set -e
 
 echo "🚀 Starting infrastructure..."
 
-# Check if Docker is running
-if ! docker info > /dev/null 2>&1; then
-  echo "❌ Docker is not running. Please start Docker/OrbStack and try again."
-  echo "   Run: open -a OrbStack"
-  exit 1
+# Check if Docker is running, wait up to 10 seconds
+MAX_RETRIES=10
+RETRY_COUNT=0
+while ! docker info > /dev/null 2>&1; do
+  if [ $RETRY_COUNT -eq 0 ]; then
+    echo "⏳ Waiting for Docker to start..."
+  fi
+  
+  RETRY_COUNT=$((RETRY_COUNT + 1))
+  if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
+    echo "❌ Docker is not running. Please start Docker/OrbStack and try again."
+    echo "   Run: open -a OrbStack"
+    exit 1
+  fi
+  
+  sleep 1
+done
+
+if [ $RETRY_COUNT -gt 0 ]; then
+  echo "✅ Docker is running"
 fi
 
 # Navigate to infra directory
