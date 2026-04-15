@@ -156,13 +156,15 @@ export default function ChatPage() {
         <div className="flex h-full flex-col">
           <div className="flex h-12 items-center justify-between border-b border-gray-200 p-4 dark:border-gray-700">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 lg:flex-1">Chat History</h2>
-            <button
-              onClick={() => setShowHistory(false)}
-              className="rounded-lg py-1 px-2 text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800 lg:hidden"
-              aria-label="Close history"
-            >
-              <Menu className="h-5 w-5" />
-            </button>
+            {showHistory && (
+              <button
+                onClick={() => setShowHistory(false)}
+                className="rounded-lg py-1 px-2 text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800 lg:hidden"
+                aria-label="Close history"
+              >
+                <Menu className="h-5 w-5" />
+              </button>
+            )}
           </div>
           <div className="flex-1 overflow-y-auto">
             <ChatHistory
@@ -177,17 +179,19 @@ export default function ChatPage() {
         </div>
       </div>
 
-      <div className="flex flex-1 flex-col">
+      <div className={cn('flex flex-1 flex-col', showHistory && 'lg:ml-0 ml-64 transition-all duration-300')}>
         <header className="flex h-12 items-center justify-between border-b border-gray-200 p-4 dark:border-gray-700">
           <div className="flex items-center gap-4 lg:flex-1">
-            <button
-              data-testid="chat-history-toggle"
-              onClick={() => setShowHistory(!showHistory)}
-              className="lg:hidden"
-              aria-label="Toggle chat history"
-            >
-              <Menu className="h-5 w-5 text-gray-600 dark:text-gray-400" />
-            </button>
+            {!showHistory && (
+              <button
+                data-testid="chat-history-toggle"
+                onClick={() => setShowHistory(!showHistory)}
+                className="lg:hidden"
+                aria-label="Toggle chat history"
+              >
+                <Menu className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+              </button>
+            )}
             <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100 lg:hidden">Chat</h1>
           </div>
           <div className="flex items-center gap-2">
@@ -202,7 +206,7 @@ export default function ChatPage() {
             <button
               data-testid="theme-toggle"
               onClick={toggleTheme}
-              className="rounded-lg py-1 px-2 text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
+              className="rounded-lg px-3 py-1 text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
               aria-label="Toggle theme"
             >
               {theme === 'light' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
