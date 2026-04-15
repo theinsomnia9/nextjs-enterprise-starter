@@ -15,10 +15,21 @@ export default function Home() {
           <li>Comprehensive Testing (Vitest + Playwright + MSW)</li>
           <li>Test-Driven Development (80%+ coverage)</li>
         </ul>
-        <div className="mt-8 p-4 bg-secondary rounded-lg">
-          <p className="text-sm text-muted-foreground">
-            Get started by running <code className="bg-muted px-2 py-1 rounded">npm run dev</code>
-          </p>
+        <div className="mt-8 space-y-4">
+          <div className="p-4 bg-secondary rounded-lg">
+            <p className="text-sm text-muted-foreground">
+              Get started by running <code className="bg-muted px-2 py-1 rounded">npm run dev</code>
+            </p>
+          </div>
+          <div className="p-4 bg-primary/10 rounded-lg border border-primary/20">
+            <h3 className="font-semibold mb-2">Try the Workflow Builder</h3>
+            <a
+              href="/builder"
+              className="inline-block px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors text-sm"
+            >
+              Open Builder
+            </a>
+          </div>
         </div>
       </div>
     </main>
