@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { MessageSquare, Loader2 } from 'lucide-react'
+import { MessageSquare, Loader2, Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface Chat {
@@ -14,15 +14,26 @@ interface Chat {
 interface ChatHistoryProps {
   onSelectChat: (chatId: string) => void
   currentChatId: string | null
+  refreshTrigger?: number
+  hasActiveChat?: boolean
+  activeChatName?: string
+  onNewChatClick?: () => void
 }
 
-export function ChatHistory({ onSelectChat, currentChatId }: ChatHistoryProps) {
+export function ChatHistory({
+  onSelectChat,
+  currentChatId,
+  refreshTrigger = 0,
+  hasActiveChat = false,
+  activeChatName = 'New Chat',
+  onNewChatClick,
+}: ChatHistoryProps) {
   const [chats, setChats] = useState<Chat[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     fetchChatHistory()
-  }, [])
+  }, [refreshTrigger])
 
   const fetchChatHistory = async () => {
     try {
@@ -54,6 +65,22 @@ export function ChatHistory({ onSelectChat, currentChatId }: ChatHistoryProps) {
 
   return (
     <div className="space-y-2 p-4">
+      {hasActiveChat && currentChatId === null && (
+        <button
+          onClick={onNewChatClick}
+          className={cn(
+            'flex w-full items-center gap-3 rounded-lg p-3 text-left transition-colors',
+            'bg-blue-500 text-white'
+          )}
+          data-testid="new-chat-indicator"
+        >
+          <Plus className="h-4 w-4 flex-shrink-0" />
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-sm font-medium">{activeChatName}</div>
+            <div className="text-xs text-blue-100">Current conversation</div>
+          </div>
+        </button>
+      )}
       {chats.map((chat) => (
         <button
           key={chat.id}

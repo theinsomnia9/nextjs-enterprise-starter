@@ -20,6 +20,7 @@ export default function ChatPage() {
   const [currentChatId, setCurrentChatId] = useState<string | null>(null)
   const [showHistory, setShowHistory] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [historyRefreshTrigger, setHistoryRefreshTrigger] = useState(0)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const { theme, toggleTheme } = useTheme()
 
@@ -100,6 +101,8 @@ export default function ChatPage() {
                 const parsed = JSON.parse(data)
                 if (parsed.chatId && !currentChatId) {
                   setCurrentChatId(parsed.chatId)
+                  // Refresh chat history to show the newly created chat
+                  setHistoryRefreshTrigger((prev) => prev + 1)
                 }
                 if (parsed.content) {
                   assistantMessage += parsed.content
@@ -137,6 +140,8 @@ export default function ChatPage() {
     setCurrentChatId(null)
     setMessages([])
     setError(null)
+    // Refresh history to ensure latest state
+    setHistoryRefreshTrigger((prev) => prev + 1)
   }
 
   return (
@@ -160,7 +165,14 @@ export default function ChatPage() {
             </button>
           </div>
           <div className="flex-1 overflow-y-auto">
-            <ChatHistory onSelectChat={loadChatMessages} currentChatId={currentChatId} />
+            <ChatHistory
+              onSelectChat={loadChatMessages}
+              currentChatId={currentChatId}
+              refreshTrigger={historyRefreshTrigger}
+              hasActiveChat={messages.length > 0 && currentChatId === null}
+              activeChatName={messages[0]?.content.slice(0, 30) || 'New Chat'}
+              onNewChatClick={handleNewChat}
+            />
           </div>
         </div>
       </div>
