@@ -8,7 +8,12 @@ const CURRENT_USER_ID = 'dev-user-alice' // TODO: replace with session.user.id w
 
 export default function ApprovalsPage() {
   const [requests, setRequests] = useState<QueueRequest[]>([])
-  const [counts, setCounts] = useState<StatusCounts>({ PENDING: 0, REVIEWING: 0, APPROVED: 0, REJECTED: 0 })
+  const [counts, setCounts] = useState<StatusCounts>({
+    PENDING: 0,
+    REVIEWING: 0,
+    APPROVED: 0,
+    REJECTED: 0,
+  })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -117,11 +122,12 @@ export default function ApprovalsPage() {
       <h1 className="mb-6 text-2xl font-bold">Approval Queue</h1>
       <QueueDashboard
         requests={requests}
+        counts={counts}
         currentUserId={CURRENT_USER_ID}
+        onRefresh={fetchQueue}
         onLock={handleLock}
         onRelease={handleRelease}
         onApprove={handleApprove}
-        counts={counts}
         onReject={handleReject}
       />
 

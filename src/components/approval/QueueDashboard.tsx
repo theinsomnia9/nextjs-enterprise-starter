@@ -20,6 +20,7 @@ interface QueueDashboardProps {
   requests: QueueRequest[]
   counts?: StatusCounts
   currentUserId: string
+  onRefresh?: () => void
   onLock?: (requestId: string) => void
   onRelease?: (requestId: string) => void
   onApprove?: (requestId: string) => void
@@ -42,6 +43,7 @@ export function QueueDashboard({
   requests,
   counts: countsProp,
   currentUserId,
+  onRefresh,
   onLock,
   onRelease,
   onApprove,
@@ -59,7 +61,7 @@ export function QueueDashboard({
 
   return (
     <div data-testid="queue-dashboard" className="flex flex-col gap-6 p-4">
-      <ApprovalPipeline initialCounts={counts} />
+      <ApprovalPipeline initialCounts={counts} onRefresh={onRefresh} />
 
       <div className="flex flex-col gap-2">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
