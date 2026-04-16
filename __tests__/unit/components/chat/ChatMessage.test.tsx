@@ -26,17 +26,17 @@ describe('ChatMessage', () => {
     expect(screen.getByTestId('streaming-indicator')).toBeInTheDocument()
   })
 
-  it('should support dark mode styling', () => {
+  it('should use theme-based background colors', () => {
     const { container: userContainer } = render(
       <ChatMessage role="USER" content="Test message" isStreaming={false} />
     )
 
-    expect(userContainer.firstChild).toHaveClass('dark:bg-blue-900/20')
+    expect(userContainer.firstChild).toHaveClass('bg-primary/5')
 
     const { container: assistantContainer } = render(
       <ChatMessage role="ASSISTANT" content="Test message" isStreaming={false} />
     )
 
-    expect(assistantContainer.firstChild).toHaveClass('dark:bg-gray-800')
+    expect(assistantContainer.firstChild).toHaveClass('bg-muted')
   })
 })

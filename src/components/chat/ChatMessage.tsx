@@ -15,7 +15,7 @@ export function ChatMessage({ role, content, isStreaming = false }: ChatMessageP
     <div
       className={cn(
         'flex w-full gap-3 rounded-lg p-4',
-        isUser ? 'bg-blue-50 dark:bg-blue-900/20' : 'bg-gray-50 dark:bg-gray-800'
+        isUser ? 'bg-primary/5' : 'bg-muted'
       )}
     >
       <div className="flex-shrink-0">
@@ -23,23 +23,23 @@ export function ChatMessage({ role, content, isStreaming = false }: ChatMessageP
           className={cn(
             'flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold',
             isUser
-              ? 'bg-blue-500 text-white'
-              : 'bg-gray-300 text-gray-700 dark:bg-gray-600 dark:text-gray-200'
+              ? 'bg-primary text-primary-foreground'
+              : 'bg-secondary text-secondary-foreground'
           )}
         >
           {isUser ? 'U' : 'A'}
         </div>
       </div>
-      <div className="flex-1">
-        <div className="mb-1 text-sm font-semibold text-gray-900 dark:text-gray-100">
+      <div className="flex-1 min-w-0">
+        <div className="mb-1 text-sm font-semibold">
           {isUser ? 'You' : 'Assistant'}
         </div>
-        <div className="whitespace-pre-wrap text-sm text-gray-800 dark:text-gray-200">
+        <div className="whitespace-pre-wrap text-sm text-foreground/90">
           {content}
           {isStreaming && (
             <span
               data-testid="streaming-indicator"
-              className="ml-1 inline-block h-4 w-1 animate-pulse bg-gray-600 dark:bg-gray-400"
+              className="ml-1 inline-block h-4 w-1 animate-pulse bg-muted-foreground"
             />
           )}
         </div>

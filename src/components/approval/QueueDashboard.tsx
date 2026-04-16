@@ -29,10 +29,10 @@ interface QueueDashboardProps {
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
-  P1: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
-  P2: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300',
-  P3: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300',
-  P4: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
+  P1: 'bg-[hsl(var(--priority-p1))]/10 text-[hsl(var(--priority-p1))]',
+  P2: 'bg-[hsl(var(--priority-p2))]/10 text-[hsl(var(--priority-p2))]',
+  P3: 'bg-[hsl(var(--priority-p3))]/10 text-[hsl(var(--priority-p3))]',
+  P4: 'bg-[hsl(var(--priority-p4))]/10 text-[hsl(var(--priority-p4))]',
 }
 
 function isLockActive(lockExpiresAt: string | null): boolean {
@@ -98,10 +98,10 @@ export function QueueDashboard({
                     {locked && (
                       <span
                         data-testid={`lock-indicator-${req.id}`}
-                        className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400"
+                        className="flex items-center gap-1 text-xs text-[hsl(var(--status-reviewing))]"
                         title={`Locked by ${req.assignee?.name ?? 'reviewer'}`}
                       >
-                        🔒
+                        <span>🔒</span>
                         {req.assignee?.name && (
                           <span className="hidden sm:inline">{req.assignee.name}</span>
                         )}
@@ -122,7 +122,7 @@ export function QueueDashboard({
                         e.stopPropagation()
                         onLock?.(req.id)
                       }}
-                      className="rounded bg-indigo-600 px-3 py-1 text-xs font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+                      className="rounded bg-[hsl(var(--status-pending))] px-3 py-1 text-xs font-medium text-white hover:opacity-90 disabled:opacity-50 interactive"
                       disabled={locked && !lockedByMe}
                     >
                       Lock
@@ -136,7 +136,7 @@ export function QueueDashboard({
                           e.stopPropagation()
                           onApprove?.(req.id)
                         }}
-                        className="rounded bg-green-600 px-3 py-1 text-xs font-medium text-white hover:bg-green-700"
+                        className="rounded bg-[hsl(var(--status-approved))] px-3 py-1 text-xs font-medium text-white hover:opacity-90 interactive"
                       >
                         Approve
                       </button>
@@ -145,7 +145,7 @@ export function QueueDashboard({
                           e.stopPropagation()
                           onReject?.(req.id)
                         }}
-                        className="rounded bg-red-600 px-3 py-1 text-xs font-medium text-white hover:bg-red-700"
+                        className="rounded bg-[hsl(var(--status-rejected))] px-3 py-1 text-xs font-medium text-white hover:opacity-90 interactive"
                       >
                         Reject
                       </button>
@@ -154,7 +154,7 @@ export function QueueDashboard({
                           e.stopPropagation()
                           onRelease?.(req.id)
                         }}
-                        className="rounded border border-border px-3 py-1 text-xs font-medium hover:bg-accent"
+                        className="rounded border border-border px-3 py-1 text-xs font-medium hover:bg-accent interactive"
                       >
                         Release
                       </button>
