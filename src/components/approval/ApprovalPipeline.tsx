@@ -83,10 +83,18 @@ export function ApprovalPipeline({ initialCounts, onNodeClick }: ApprovalPipelin
   }, [counts, setNodes])
 
   useEffect(() => {
+    const appKey = process.env.NEXT_PUBLIC_PUSHER_APP_KEY
+    if (!appKey) {
+      console.warn(
+        '[ApprovalPipeline] NEXT_PUBLIC_PUSHER_APP_KEY not set — real-time updates disabled'
+      )
+      return
+    }
+
     const room = createYjsRoom('approval-pipeline')
     yjsRoomRef.current = room
 
-    const pusher = new PusherJS(process.env.NEXT_PUBLIC_PUSHER_APP_KEY!, {
+    const pusher = new PusherJS(appKey, {
       wsHost: process.env.NEXT_PUBLIC_PUSHER_HOST ?? 'localhost',
       wsPort: Number(process.env.NEXT_PUBLIC_PUSHER_PORT ?? '6001'),
       forceTLS: false,
