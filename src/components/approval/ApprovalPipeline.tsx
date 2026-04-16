@@ -1,20 +1,21 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
-import ReactFlow, {
-  Background,
-  Controls,
-  useNodesState,
-  useEdgesState,
-  BackgroundVariant,
-  type Node,
-  type Edge,
-  type NodeMouseHandler,
+import dynamic from 'next/dynamic'
+import type {
+  Node as RFNode,
+  Edge as RFEdge,
+  NodeMouseHandler,
+  OnNodesChange,
+  OnEdgesChange,
 } from 'reactflow'
-import 'reactflow/dist/style.css'
 import PusherJS from 'pusher-js'
 import { createYjsRoom, destroyYjsRoom, type YjsRoom } from '@/lib/approvals/yjsClient'
-import { APPROVAL_CHANNEL } from '@/lib/approvals/pusherServer'
+import { APPROVAL_CHANNEL } from '@/lib/approvals/constants'
+
+const ReactFlow = dynamic(() => import('reactflow').then((m) => m.default), { ssr: false })
+const Background = dynamic(() => import('reactflow').then((m) => m.Background), { ssr: false })
+const Controls = dynamic(() => import('reactflow').then((m) => m.Controls), { ssr: false })
 
 export type StatusCounts = {
   PENDING: number
@@ -44,7 +45,7 @@ const STAGE_COLORS: Record<keyof StatusCounts, string> = {
   REJECTED: '#ef4444',
 }
 
-function buildNodes(counts: StatusCounts): Node[] {
+function buildNodes(counts: StatusCounts): RFNode[] {
   return STAGE_LABELS.map((label) => ({
     id: label,
     type: 'default',
@@ -66,7 +67,7 @@ function buildNodes(counts: StatusCounts): Node[] {
   }))
 }
 
-const INITIAL_EDGES: Edge[] = [
+const INITIAL_EDGES: RFEdge[] = [
   { id: 'e1', source: 'PENDING', target: 'REVIEWING', animated: true },
   { id: 'e2', source: 'REVIEWING', target: 'APPROVED' },
   { id: 'e3', source: 'REVIEWING', target: 'REJECTED' },
@@ -74,13 +75,16 @@ const INITIAL_EDGES: Edge[] = [
 
 export function ApprovalPipeline({ initialCounts, onNodeClick }: ApprovalPipelineProps) {
   const [counts, setCounts] = useState<StatusCounts>(initialCounts)
-  const [nodes, setNodes, onNodesChange] = useNodesState(buildNodes(initialCounts))
-  const [edges, , onEdgesChange] = useEdgesState(INITIAL_EDGES)
+  const [nodes, setNodes] = useState<RFNode[]>(buildNodes(initialCounts))
+  const [edges] = useState<RFEdge[]>(INITIAL_EDGES)
   const yjsRoomRef = useRef<YjsRoom | null>(null)
+
+  const onNodesChange = useCallback<OnNodesChange>(() => {}, [])
+  const onEdgesChange = useCallback<OnEdgesChange>(() => {}, [])
 
   useEffect(() => {
     setNodes(buildNodes(counts))
-  }, [counts, setNodes])
+  }, [counts])
 
   useEffect(() => {
     const appKey = process.env.NEXT_PUBLIC_PUSHER_APP_KEY
@@ -167,7 +171,7 @@ export function ApprovalPipeline({ initialCounts, onNodeClick }: ApprovalPipelin
           fitView
           attributionPosition="bottom-right"
         >
-          <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
+          <Background variant={'dots' as never} gap={16} size={1} />
           <Controls />
         </ReactFlow>
       </div>
