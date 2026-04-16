@@ -21,22 +21,24 @@ export default function ApprovalsPage() {
   const [rejectReason, setRejectReason] = useState('')
   const rejectInputRef = useRef<HTMLTextAreaElement>(null)
 
-  const fetchQueue = useCallback(async () => {
+  const fetchQueue = useCallback(async (isInitialLoad = false) => {
     try {
       const res = await fetch('/api/approvals/queue')
       if (!res.ok) throw new Error('Failed to load queue')
       const data = await res.json()
       setRequests(data.requests)
       if (data.counts) setCounts(data.counts as StatusCounts)
+      if (isInitialLoad) setError(null)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Unknown error')
+      if (isInitialLoad) setError(e instanceof Error ? e.message : 'Unknown error')
+      else console.error('[fetchQueue] refresh failed:', e)
     } finally {
-      setLoading(false)
+      if (isInitialLoad) setLoading(false)
     }
   }, [])
 
   useEffect(() => {
-    fetchQueue()
+    fetchQueue(true)
   }, [fetchQueue])
 
   useEffect(() => {

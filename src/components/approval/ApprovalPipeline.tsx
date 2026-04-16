@@ -80,8 +80,8 @@ export function ApprovalPipeline({ initialCounts, onNodeClick, onRefresh }: Appr
   const [edges] = useState<RFEdge[]>(INITIAL_EDGES)
   const yjsRoomRef = useRef<YjsRoom | null>(null)
 
-  const onNodesChange = useCallback<OnNodesChange>(() => {}, [])
-  const onEdgesChange = useCallback<OnEdgesChange>(() => {}, [])
+  const onNodesChange = useCallback<OnNodesChange>(() => { }, [])
+  const onEdgesChange = useCallback<OnEdgesChange>(() => { }, [])
 
   useEffect(() => {
     setCounts(initialCounts)
@@ -124,6 +124,7 @@ export function ApprovalPipeline({ initialCounts, onNodeClick, onRefresh }: Appr
     channel.bind('request:unlocked', refresh)
     channel.bind('request:approved', refresh)
     channel.bind('request:rejected', refresh)
+    channel.bind('queue:counts', refresh)
 
     return () => {
       channel.unbind_all()

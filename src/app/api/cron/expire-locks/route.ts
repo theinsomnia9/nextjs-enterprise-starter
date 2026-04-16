@@ -3,10 +3,10 @@ import { prisma } from '@/lib/prisma'
 import { triggerApprovalEvent } from '@/lib/approvals/pusherServer'
 
 export async function GET(req: Request) {
+  const cronSecret = process.env.CRON_SECRET
   const auth = req.headers.get('Authorization')
-  const expected = `Bearer ${process.env.CRON_SECRET}`
 
-  if (!auth || auth !== expected) {
+  if (!cronSecret || !auth || auth !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
