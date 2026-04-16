@@ -27,6 +27,7 @@ export type StatusCounts = {
 interface ApprovalPipelineProps {
   initialCounts: StatusCounts
   onNodeClick?: NodeMouseHandler
+  onRefresh?: () => void
 }
 
 const STAGE_LABELS: (keyof StatusCounts)[] = ['PENDING', 'REVIEWING', 'APPROVED', 'REJECTED']
@@ -73,7 +74,7 @@ const INITIAL_EDGES: RFEdge[] = [
   { id: 'e3', source: 'REVIEWING', target: 'REJECTED' },
 ]
 
-export function ApprovalPipeline({ initialCounts, onNodeClick }: ApprovalPipelineProps) {
+export function ApprovalPipeline({ initialCounts, onNodeClick, onRefresh }: ApprovalPipelineProps) {
   const [counts, setCounts] = useState<StatusCounts>(initialCounts)
   const [nodes, setNodes] = useState<RFNode[]>(buildNodes(initialCounts))
   const [edges] = useState<RFEdge[]>(INITIAL_EDGES)
@@ -81,6 +82,10 @@ export function ApprovalPipeline({ initialCounts, onNodeClick }: ApprovalPipelin
 
   const onNodesChange = useCallback<OnNodesChange>(() => {}, [])
   const onEdgesChange = useCallback<OnEdgesChange>(() => {}, [])
+
+  useEffect(() => {
+    setCounts(initialCounts)
+  }, [initialCounts])
 
   useEffect(() => {
     setNodes(buildNodes(counts))
@@ -111,16 +116,7 @@ export function ApprovalPipeline({ initialCounts, onNodeClick }: ApprovalPipelin
     const channel = pusher.subscribe(APPROVAL_CHANNEL)
 
     const refresh = () => {
-      fetch('/api/approvals/queue')
-        .then((r) => r.json())
-        .then((data: { requests: Array<{ status: keyof StatusCounts }> }) => {
-          const next: StatusCounts = { PENDING: 0, REVIEWING: 0, APPROVED: 0, REJECTED: 0 }
-          data.requests.forEach((req) => {
-            if (req.status in next) next[req.status]++
-          })
-          setCounts(next)
-        })
-        .catch(() => {})
+      onRefresh?.()
     }
 
     channel.bind('request:submitted', refresh)
@@ -138,7 +134,7 @@ export function ApprovalPipeline({ initialCounts, onNodeClick }: ApprovalPipelin
         yjsRoomRef.current = null
       }
     }
-  }, [])
+  }, [onRefresh])
 
   const handleNodeClick: NodeMouseHandler = useCallback(
     (event, node) => {
