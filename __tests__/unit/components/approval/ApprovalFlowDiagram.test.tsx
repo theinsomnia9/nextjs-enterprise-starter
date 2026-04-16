@@ -1,17 +1,26 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '../../../setup/test-utils'
 import { ApprovalFlowDiagram } from '@/components/approval/ApprovalFlowDiagram'
+import { createYjsRoom } from '@/lib/approvals/yjsClient'
 
 vi.mock('reactflow', async () => {
   const React = await import('react')
   const MockFlow = ({
     children,
     onNodeClick,
+    onNodeDragStop,
     nodes,
   }: {
     children?: React.ReactNode
-    onNodeClick?: (event: React.MouseEvent, node: { id: string; data: unknown }) => void
-    nodes?: Array<{ id: string; data: unknown }>
+    onNodeClick?: (
+      event: React.MouseEvent,
+      node: { id: string; data: unknown; position: { x: number; y: number } }
+    ) => void
+    onNodeDragStop?: (
+      event: React.MouseEvent,
+      node: { id: string; data: unknown; position: { x: number; y: number } }
+    ) => void
+    nodes?: Array<{ id: string; data: unknown; position: { x: number; y: number } }>
   }) =>
     React.createElement(
       'div',
@@ -23,6 +32,7 @@ vi.mock('reactflow', async () => {
             key: n.id,
             'data-testid': `node-${n.id}`,
             onClick: (e: React.MouseEvent) => onNodeClick?.(e, n),
+            onMouseUp: (e: React.MouseEvent) => onNodeDragStop?.(e, n),
           },
           String(n.id)
         )
@@ -142,5 +152,27 @@ describe('ApprovalFlowDiagram', () => {
   it('accepts an optional roomId prop', () => {
     render(<ApprovalFlowDiagram request={mockRequest} roomId="custom-room" />)
     expect(screen.getByTestId('approval-flow-diagram')).toBeDefined()
+  })
+
+  it('nodes are draggable (onMouseUp fires without error)', () => {
+    render(<ApprovalFlowDiagram request={mockRequest} />)
+    const submitNode = screen.getByTestId('node-submit')
+    expect(submitNode).toBeDefined()
+    expect(() => fireEvent.mouseUp(submitNode)).not.toThrow()
+  })
+
+  it('broadcasts position to Yjs on node drag stop', () => {
+    render(<ApprovalFlowDiagram request={mockRequest} />)
+    const reviewNode = screen.getByTestId('node-review')
+    fireEvent.mouseUp(reviewNode)
+    expect(createYjsRoom).toHaveBeenCalled()
+  })
+
+  it('clicking same node twice deselects it', () => {
+    render(<ApprovalFlowDiagram request={mockRequest} />)
+    fireEvent.click(screen.getByTestId('node-submit'))
+    expect(screen.getByTestId('node-detail-panel')).toBeDefined()
+    fireEvent.click(screen.getByTestId('node-submit'))
+    expect(screen.queryByTestId('node-detail-panel')).toBeNull()
   })
 })

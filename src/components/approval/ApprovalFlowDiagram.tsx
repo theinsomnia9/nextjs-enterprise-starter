@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 import dynamic from 'next/dynamic'
-import type { Node as RFNode, Edge as RFEdge, NodeMouseHandler } from 'reactflow'
-import { Background, Controls, MiniMap } from 'reactflow'
+import type { Node as RFNode, Edge as RFEdge, NodeMouseHandler, NodeDragHandler } from 'reactflow'
+import { Background, Controls, MiniMap, useNodesState, useEdgesState } from 'reactflow'
 import 'reactflow/dist/style.css'
 import { createYjsRoom, destroyYjsRoom, type YjsRoom } from '@/lib/approvals/yjsClient'
 import type { QueueRequest } from './QueueDashboard'
@@ -66,11 +66,8 @@ function getNodeStyle(nodeId: NodeId, requestStatus: string, selected: boolean) 
   }
 }
 
-function buildFlowData(
-  request: QueueRequest,
-  selectedNodeId: NodeId | null
-): { nodes: RFNode[]; edges: RFEdge[] } {
-  const nodes: RFNode[] = [
+function buildInitialNodes(request: QueueRequest): RFNode[] {
+  return [
     {
       id: 'submit',
       type: 'default',
@@ -85,7 +82,7 @@ function buildFlowData(
           </div>
         ),
       },
-      style: getNodeStyle('submit', request.status, selectedNodeId === 'submit'),
+      style: getNodeStyle('submit', request.status, false),
     },
     {
       id: 'review',
@@ -101,7 +98,7 @@ function buildFlowData(
           </div>
         ),
       },
-      style: getNodeStyle('review', request.status, selectedNodeId === 'review'),
+      style: getNodeStyle('review', request.status, false),
     },
     {
       id: 'decision',
@@ -123,23 +120,29 @@ function buildFlowData(
           </div>
         ),
       },
-      style: getNodeStyle('decision', request.status, selectedNodeId === 'decision'),
+      style: getNodeStyle('decision', request.status, false),
     },
   ]
+}
 
-  const edges: RFEdge[] = [
+function buildInitialEdges(request: QueueRequest): RFEdge[] {
+  const reviewing = request.status === 'REVIEWING'
+  const decided = request.status === 'APPROVED' || request.status === 'REJECTED'
+  return [
     {
       id: 'e-submit-review',
       source: 'submit',
       target: 'review',
-      animated: request.status === 'REVIEWING',
+      type: 'straight',
+      animated: reviewing,
       style: { stroke: '#f59e0b', strokeWidth: 2 },
     },
     {
       id: 'e-review-decision',
       source: 'review',
       target: 'decision',
-      animated: request.status === 'APPROVED' || request.status === 'REJECTED',
+      type: 'straight',
+      animated: decided,
       style: {
         stroke:
           request.status === 'APPROVED'
@@ -151,8 +154,6 @@ function buildFlowData(
       },
     },
   ]
-
-  return { nodes, edges }
 }
 
 function buildNodeDetail(nodeId: NodeId, request: QueueRequest): NodeDetail {
@@ -223,27 +224,67 @@ export function ApprovalFlowDiagram({ request, roomId }: ApprovalFlowDiagramProp
   const [selectedNodeId, setSelectedNodeId] = useState<NodeId | null>(null)
   const yjsRoomRef = useRef<YjsRoom | null>(null)
 
-  const { nodes, edges } = buildFlowData(request, selectedNodeId)
+  const initialNodesRef = useRef<RFNode[]>(buildInitialNodes(request))
+  const initialEdgesRef = useRef<RFEdge[]>(buildInitialEdges(request))
 
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodesRef.current)
+  const [edges, , onEdgesChange] = useEdgesState(initialEdgesRef.current)
+
+  /* Sync node styles when selection changes — keeps node references stable */
+  useEffect(() => {
+    setNodes((prev) =>
+      prev.map((n) => ({
+        ...n,
+        style: getNodeStyle(n.id as NodeId, request.status, selectedNodeId === n.id),
+      }))
+    )
+  }, [selectedNodeId, request.status, setNodes])
+
+  /* Setup Yjs room + subscribe to remote position updates */
   useEffect(() => {
     const effectiveRoomId = roomId ?? `approval-${request.id}`
+    let room: YjsRoom | null = null
     try {
-      const room = createYjsRoom(effectiveRoomId)
+      room = createYjsRoom(effectiveRoomId)
       yjsRoomRef.current = room
       room.awareness.setLocalStateField('user', {
         requestId: request.id,
         viewedAt: new Date().toISOString(),
       })
+
+      /* When another client moves a node, update positions locally */
+      const observer = () => {
+        if (!yjsRoomRef.current) return
+        setNodes((prev) =>
+          prev.map((n) => {
+            const pos = yjsRoomRef.current!.nodesMap.get(n.id) as
+              | { x: number; y: number }
+              | undefined
+            return pos ? { ...n, position: pos } : n
+          })
+        )
+      }
+      room.nodesMap.observe(observer)
+
+      return () => {
+        room?.nodesMap.unobserve(observer)
+        destroyYjsRoom(room!)
+        yjsRoomRef.current = null
+      }
     } catch {
       /* Yjs unavailable in test/static env — gracefully skip */
     }
-    return () => {
-      if (yjsRoomRef.current) {
-        destroyYjsRoom(yjsRoomRef.current)
-        yjsRoomRef.current = null
-      }
+  }, [request.id, roomId, setNodes])
+
+  /* Broadcast drag-end position to all viewers via Yjs */
+  const handleNodeDragStop = useCallback<NodeDragHandler>((_event, node) => {
+    if (yjsRoomRef.current) {
+      yjsRoomRef.current.nodesMap.set(node.id, {
+        x: node.position.x,
+        y: node.position.y,
+      })
     }
-  }, [request.id, roomId])
+  }, [])
 
   const handleNodeClick = useCallback<NodeMouseHandler>((_event, node) => {
     setSelectedNodeId((prev) => (prev === node.id ? null : (node.id as NodeId)))
@@ -257,11 +298,14 @@ export function ApprovalFlowDiagram({ request, roomId }: ApprovalFlowDiagramProp
         <ReactFlow
           nodes={nodes}
           edges={edges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
           onNodeClick={handleNodeClick}
+          onNodeDragStop={handleNodeDragStop}
           fitView
           fitViewOptions={{ padding: 0.3 }}
           attributionPosition="bottom-right"
-          nodesDraggable={false}
+          nodesDraggable={true}
           nodesConnectable={false}
           elementsSelectable={true}
         >
@@ -334,7 +378,9 @@ export function ApprovalFlowDiagram({ request, roomId }: ApprovalFlowDiagramProp
           <span className="inline-block h-2 w-2 rounded-full bg-red-500" />
           Rejected
         </div>
-        <span className="ml-auto italic">Click a node for details</span>
+        <span className="ml-auto italic">
+          Click a node for details · Drag to reposition (synced live)
+        </span>
       </div>
     </div>
   )
