@@ -13,7 +13,6 @@ export async function GET() {
           requester: { select: { id: true, name: true, email: true } },
           assignee: { select: { id: true, name: true, email: true } },
         },
-        orderBy: { submittedAt: 'asc' },
       }),
       prisma.priorityConfig.findMany(),
       prisma.approvalRequest.groupBy({ by: ['status'], _count: { id: true } }),
