@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic'
 import type { Node as RFNode, Edge as RFEdge, NodeMouseHandler, NodeDragHandler } from 'reactflow'
 import { Background, Controls, MiniMap, useNodesState, useEdgesState } from 'reactflow'
 import 'reactflow/dist/style.css'
+import * as Y from 'yjs'
 import { createYjsRoom, destroyYjsRoom, type YjsRoom } from '@/lib/approvals/yjsClient'
 import type { QueueRequest } from './QueueDashboard'
 import { cn } from '@/lib/utils'
@@ -217,6 +218,10 @@ function buildNodeDetail(nodeId: NodeId, request: QueueRequest): NodeDetail {
           },
         ],
       }
+    default: {
+      const _exhaustive: never = nodeId
+      throw new Error(`Unknown node id: ${_exhaustive}`)
+    }
   }
 }
 
@@ -240,39 +245,43 @@ export function ApprovalFlowDiagram({ request, roomId }: ApprovalFlowDiagramProp
     )
   }, [selectedNodeId, request.status, setNodes])
 
-  /* Setup Yjs room + subscribe to remote position updates */
+  /* Setup Yjs room + subscribe to REMOTE position updates only */
   useEffect(() => {
     const effectiveRoomId = roomId ?? `approval-${request.id}`
     let room: YjsRoom | null = null
+    let observer: ((event: Y.YMapEvent<unknown>) => void) | null = null
+
     try {
       room = createYjsRoom(effectiveRoomId)
       yjsRoomRef.current = room
+
       room.awareness.setLocalStateField('user', {
         requestId: request.id,
         viewedAt: new Date().toISOString(),
       })
 
-      /* When another client moves a node, update positions locally */
-      const observer = () => {
-        if (!yjsRoomRef.current) return
+      /* Ignore writes originated by this client to avoid position bounce-back */
+      observer = (event: Y.YMapEvent<unknown>) => {
+        if (event.transaction.local) return
         setNodes((prev) =>
           prev.map((n) => {
-            const pos = yjsRoomRef.current!.nodesMap.get(n.id) as
-              | { x: number; y: number }
-              | undefined
+            const pos = room!.nodesMap.get(n.id) as { x: number; y: number } | undefined
             return pos ? { ...n, position: pos } : n
           })
         )
       }
       room.nodesMap.observe(observer)
-
-      return () => {
-        room?.nodesMap.unobserve(observer)
-        destroyYjsRoom(room!)
-        yjsRoomRef.current = null
-      }
     } catch {
       /* Yjs unavailable in test/static env — gracefully skip */
+    }
+
+    /* Cleanup always runs — prevents resource leak even on partial setup failure */
+    return () => {
+      if (observer && room) room.nodesMap.unobserve(observer)
+      if (room) {
+        destroyYjsRoom(room)
+        yjsRoomRef.current = null
+      }
     }
   }, [request.id, roomId, setNodes])
 
