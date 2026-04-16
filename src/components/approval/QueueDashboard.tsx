@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import { ApprovalPipeline, type StatusCounts } from './ApprovalPipeline'
 
 export type QueueRequest = {
@@ -49,6 +50,8 @@ export function QueueDashboard({
   onApprove,
   onReject,
 }: QueueDashboardProps) {
+  const router = useRouter()
+
   const derivedCounts = useMemo<StatusCounts>(() => {
     const c: StatusCounts = { PENDING: 0, REVIEWING: 0, APPROVED: 0, REJECTED: 0 }
     requests.forEach((r) => {
@@ -76,7 +79,13 @@ export function QueueDashboard({
             return (
               <div
                 key={req.id}
-                className="flex items-center justify-between rounded-lg border border-border bg-card px-4 py-3 shadow-sm"
+                data-testid={`queue-item-${req.id}`}
+                tabIndex={0}
+                onClick={() => router.push(`/approvals/${req.id}`)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') router.push(`/approvals/${req.id}`)
+                }}
+                className="flex cursor-pointer items-center justify-between rounded-lg border border-border bg-card px-4 py-3 shadow-sm transition-colors hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <div className="flex min-w-0 flex-col gap-1">
                   <div className="flex items-center gap-2">
@@ -109,7 +118,10 @@ export function QueueDashboard({
                 <div className="flex shrink-0 items-center gap-2">
                   {req.status === 'PENDING' && (
                     <button
-                      onClick={() => onLock?.(req.id)}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onLock?.(req.id)
+                      }}
                       className="rounded bg-indigo-600 px-3 py-1 text-xs font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
                       disabled={locked && !lockedByMe}
                     >
@@ -120,19 +132,28 @@ export function QueueDashboard({
                   {req.status === 'REVIEWING' && lockedByMe && (
                     <>
                       <button
-                        onClick={() => onApprove?.(req.id)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onApprove?.(req.id)
+                        }}
                         className="rounded bg-green-600 px-3 py-1 text-xs font-medium text-white hover:bg-green-700"
                       >
                         Approve
                       </button>
                       <button
-                        onClick={() => onReject?.(req.id)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onReject?.(req.id)
+                        }}
                         className="rounded bg-red-600 px-3 py-1 text-xs font-medium text-white hover:bg-red-700"
                       >
                         Reject
                       </button>
                       <button
-                        onClick={() => onRelease?.(req.id)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onRelease?.(req.id)
+                        }}
                         className="rounded border border-border px-3 py-1 text-xs font-medium hover:bg-accent"
                       >
                         Release
