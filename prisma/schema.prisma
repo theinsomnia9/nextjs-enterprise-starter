@@ -43,13 +43,17 @@ model User {
   email         String?   @unique
   emailVerified DateTime?
   image         String?
-  accounts      Account[]
-  sessions      Session[]
-  messages      Message[]
-  workflows     Workflow[]
-  workflowExecutions WorkflowExecution[]
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  accounts               Account[]
+  sessions               Session[]
+  messages               Message[]
+  workflows              Workflow[]
+  workflowExecutions     WorkflowExecution[]
+  approvalRequests       ApprovalRequest[]   @relation("ApprovalRequester")
+  assignedApprovals      ApprovalRequest[]   @relation("ApprovalAssignee")
+  approvedRequests       ApprovalRequest[]   @relation("ApprovalApprover")
+  priorityConfigUpdates  PriorityConfig[]    @relation("PriorityConfigUpdater")
+  createdAt              DateTime            @default(now())
+  updatedAt              DateTime            @updatedAt
 
   @@index([email])
 }
@@ -177,4 +181,61 @@ enum StepStatus {
   COMPLETED
   FAILED
   SKIPPED
+}
+
+model ApprovalRequest {
+  id              String           @id @default(cuid())
+  title           String
+  description     String?          @db.Text
+  category        ApprovalCategory @default(P4)
+  status          ApprovalStatus   @default(PENDING)
+
+  requesterId     String
+  requester       User             @relation("ApprovalRequester", fields: [requesterId], references: [id])
+
+  assigneeId      String?
+  assignee        User?            @relation("ApprovalAssignee", fields: [assigneeId], references: [id])
+  lockedAt        DateTime?
+  lockExpiresAt   DateTime?
+
+  approvedById    String?
+  approvedBy      User?            @relation("ApprovalApprover", fields: [approvedById], references: [id])
+  approvedAt      DateTime?
+  rejectedAt      DateTime?
+  rejectionReason String?          @db.Text
+
+  submittedAt     DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@index([status, category, submittedAt])
+  @@index([status, lockExpiresAt])
+  @@index([requesterId])
+  @@index([assigneeId])
+}
+
+model PriorityConfig {
+  id                 String           @id @default(cuid())
+  category           ApprovalCategory @unique
+  baseWeight         Int
+  agingFactor        Float
+  slaHours           Int
+  lockTimeoutMinutes Int              @default(5)
+  updatedAt          DateTime         @updatedAt
+  updatedById        String
+  updatedBy          User             @relation("PriorityConfigUpdater", fields: [updatedById], references: [id])
+}
+
+enum ApprovalCategory {
+  P1
+  P2
+  P3
+  P4
+}
+
+enum ApprovalStatus {
+  PENDING
+  REVIEWING
+  APPROVED
+  REJECTED
+  CANCELLED
 }
