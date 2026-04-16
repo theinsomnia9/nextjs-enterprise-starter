@@ -4,6 +4,12 @@ const prisma = new PrismaClient()
 
 const SYSTEM_USER_EMAIL = 'system@local'
 
+const DEV_USERS = [
+  { id: 'dev-user-alice', name: 'Alice', email: 'alice@dev.local' },
+  { id: 'dev-user-bob', name: 'Bob', email: 'bob@dev.local' },
+  { id: 'dev-user-carol', name: 'Carol', email: 'carol@dev.local' },
+]
+
 const DEFAULT_PRIORITY_CONFIGS = [
   { category: 'P1', baseWeight: 100, agingFactor: 2.0, slaHours: 24, lockTimeoutMinutes: 5 },
   { category: 'P2', baseWeight: 75, agingFactor: 1.5, slaHours: 48, lockTimeoutMinutes: 5 },
@@ -38,7 +44,17 @@ async function main() {
     })
   }
 
+  for (const u of DEV_USERS) {
+    await prisma.user.upsert({
+      where: { email: u.email },
+      update: { name: u.name },
+      create: { id: u.id, name: u.name, email: u.email },
+    })
+  }
+
   console.log('Seeded priority configs for P1-P4')
+  console.log('Dev users ready:')
+  DEV_USERS.forEach((u) => console.log(`  ${u.name}: id=${u.id}  email=${u.email}`))
 }
 
 main()

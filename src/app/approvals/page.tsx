@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { QueueDashboard, type QueueRequest } from '@/components/approval/QueueDashboard'
 
-const CURRENT_USER_ID = 'system' // TODO: replace with session.user.id when auth is configured
+const CURRENT_USER_ID = 'dev-user-alice' // TODO: replace with session.user.id when auth is configured
 
 export default function ApprovalsPage() {
   const [requests, setRequests] = useState<QueueRequest[]>([])
