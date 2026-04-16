@@ -13,8 +13,6 @@ vi.mock('reactflow', async () => {
     Handle: ({ type }: { type: string }) =>
       React.createElement('div', { 'data-testid': `handle-${type}` }),
     Position: { Top: 'top', Bottom: 'bottom', Left: 'left', Right: 'right' },
-    useNodesState: (init: unknown[]) => [init, vi.fn(), vi.fn()],
-    useEdgesState: (init: unknown[]) => [init, vi.fn(), vi.fn()],
     BackgroundVariant: { Dots: 'dots' },
   }
 })
@@ -54,9 +52,9 @@ describe('ApprovalPipeline', () => {
     vi.clearAllMocks()
   })
 
-  it('renders the ReactFlow canvas', () => {
+  it('renders the pipeline container (ReactFlow loaded dynamically)', () => {
     render(<ApprovalPipeline initialCounts={mockCounts} />)
-    expect(screen.getByTestId('react-flow')).toBeDefined()
+    expect(screen.getByTestId('approval-pipeline')).toBeDefined()
   })
 
   it('renders PENDING, REVIEWING, APPROVED, REJECTED stage labels', () => {

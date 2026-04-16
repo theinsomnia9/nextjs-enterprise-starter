@@ -1,4 +1,7 @@
 import Pusher from 'pusher'
+import { APPROVAL_CHANNEL } from './constants'
+
+export { APPROVAL_CHANNEL }
 
 export type ApprovalEventName =
   | 'request:submitted'
@@ -7,8 +10,6 @@ export type ApprovalEventName =
   | 'request:approved'
   | 'request:rejected'
   | 'queue:counts'
-
-export const APPROVAL_CHANNEL = 'approval-queue'
 
 function createPusherServer(): Pusher | null {
   const { PUSHER_APP_ID, PUSHER_APP_KEY, PUSHER_APP_SECRET } = process.env
