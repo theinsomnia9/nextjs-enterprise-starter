@@ -4,27 +4,28 @@ A production-ready Next.js 14 application featuring comprehensive observability,
 
 ## Features
 
-- ✅ **Microsoft Entra ID Authentication** - Secure authentication with Azure AD integration
 - ✅ **Full Observability Stack** - OpenTelemetry with Jaeger, Prometheus, and Grafana
-- ✅ **Real-time Chat** - Server-Sent Events (SSE) based messaging system
+- ✅ **Real-time Chat** - OpenAI GPT-4o-mini streaming via Server-Sent Events with history persistence
 - ✅ **Visual Workflow Builder** - Drag-and-drop workflow creation with ReactFlow
-- ✅ **Workflow Execution Engine** - Track and visualize workflow progress
+- ✅ **Approval Queue** - Priority-scored approval workflow with Yjs real-time collaboration and Pusher broadcasting
 - ✅ **PostgreSQL Database** - Type-safe database operations with Prisma ORM
-- ✅ **Comprehensive Testing** - Vitest (unit/integration), Playwright (E2E), MSW (mocking)
-- ✅ **Modern UI** - Tailwind CSS with shadcn/ui components
+- ✅ **Comprehensive Testing** - Vitest (164+ unit tests), Playwright (E2E), MSW (mocking)
+- ✅ **Modern UI** - Tailwind CSS with dark/light theme toggle
 - ✅ **Type Safety** - Full TypeScript implementation with strict mode
 - ✅ **Docker Infrastructure** - Complete local development environment
+- ⏳ **Microsoft Entra ID Authentication** - Schema and adapter ready, implementation pending
 
 ## Tech Stack
 
 - **Framework:** Next.js 14 (App Router)
 - **Language:** TypeScript
 - **Database:** PostgreSQL + Prisma ORM
-- **Auth:** NextAuth.js v5 with Microsoft Entra ID
+- **Auth:** NextAuth.js v5 + `@auth/prisma-adapter` (Entra ID integration pending)
 - **Observability:** OpenTelemetry (OTLP), Jaeger, Prometheus, Grafana
-- **Real-time:** Server-Sent Events (SSE)
+- **Real-time:** Server-Sent Events (SSE) + Pusher + Yjs (CRDT collaboration)
+- **AI:** OpenAI SDK (GPT-4o-mini streaming)
 - **Workflows:** ReactFlow
-- **Styling:** Tailwind CSS + shadcn/ui
+- **Styling:** Tailwind CSS (dark/light mode via CSS variables)
 - **Testing:** Vitest + Playwright + MSW
 - **Containerization:** Docker + Docker Compose
 
@@ -54,9 +55,11 @@ cp .env.example .env
 ```
 
 Edit `.env` and configure:
-- Database connection string
-- Microsoft Entra ID credentials (see [AUTH_SETUP.md](./AUTH_SETUP.md))
-- OpenTelemetry settings
+- `DATABASE_URL` - PostgreSQL connection string
+- `OPENAI_API_KEY` - Required for chat feature (get from platform.openai.com)
+- `NEXTAUTH_SECRET` - Random secret for NextAuth session signing
+- `NEXTAUTH_URL` - Your app URL (default: `http://localhost:3000`)
+- OpenTelemetry settings (optional, defaults work with local infra)
 
 ### 3. Start Infrastructure
 
@@ -152,40 +155,49 @@ nextjs-boiler-plate/
 ├── src/
 │   ├── app/                    # Next.js App Router
 │   │   ├── api/                # API routes
-│   │   ├── (auth)/             # Authentication pages
-│   │   └── (protected)/        # Protected routes
+│   │   │   ├── chat/           # Chat + SSE streaming endpoints
+│   │   │   ├── approvals/      # Approval queue CRUD + lock endpoints
+│   │   │   ├── cron/           # Lock expiry cron job
+│   │   │   └── pusher/         # Pusher auth endpoint
+│   │   ├── chat/               # Chat page
+│   │   ├── builder/            # Workflow builder page
+│   │   └── approvals/          # Approvals list + [id] detail page
 │   ├── components/             # React components
-│   │   ├── ui/                 # shadcn/ui components
-│   │   ├── chat/               # Chat components
-│   │   └── workflow/           # Workflow components
+│   │   ├── chat/               # Chat UI (ChatMessage, ChatInput, ChatHistory)
+│   │   ├── workflow/           # ReactFlow builder + CustomNode
+│   │   ├── approval/           # QueueDashboard, ApprovalFlowDiagram, ApprovalPipeline
+│   │   └── theme/              # ThemeToggle
 │   ├── lib/                    # Utilities and helpers
 │   │   ├── telemetry/          # OpenTelemetry setup
-│   │   ├── auth.ts             # NextAuth configuration
-│   │   └── prisma.ts           # Prisma client
-│   └── types/                  # TypeScript types
+│   │   ├── approvals/          # Priority scoring, Yjs client, Pusher, schemas
+│   │   ├── prisma.ts           # Prisma client
+│   │   └── utils.ts            # cn() and shared utilities
+│   ├── providers/              # React context providers (ThemeProvider)
+│   └── instrumentation.ts      # Next.js OTEL instrumentation hook
 ├── prisma/                     # Database schema and migrations
 ├── __tests__/                  # Test files
-│   ├── unit/                   # Unit tests
-│   ├── integration/            # Integration tests
-│   ├── e2e/                    # E2E tests
-│   └── mocks/                  # MSW handlers
+│   ├── unit/                   # 164+ unit tests (Vitest)
+│   ├── e2e/                    # E2E tests (Playwright)
+│   ├── mocks/                  # MSW handlers
+│   └── setup/                  # Test utilities and vitest setup
 ├── infra/                      # Infrastructure configuration
-│   ├── docker-compose.yml      # Complete stack
+│   ├── docker-compose.yml      # Complete local stack
 │   ├── otel-collector-config.yaml
 │   ├── prometheus/
 │   ├── grafana/
 │   └── scripts/
-└── docs/                       # Additional documentation
+└── scripts/                    # Shell scripts (start/stop infra)
 ```
 
 ## Documentation
 
-- [Architecture Overview](./ARCHITECTURE.md)
 - [TDD Workflow Guide](./TDD.md)
 - [OpenTelemetry Standards](./OPENTELEMETRY.md)
-- [Authentication Setup](./AUTH_SETUP.md)
-- [Workflow System](./WORKFLOW_GUIDE.md)
-- [Infrastructure Setup](./infra/README.md)
+- [Infrastructure Setup](./INFRASTRUCTURE.md)
+- [Chat Implementation](./CHAT_IMPLEMENTATION.md)
+- [Workflow Builder](./WORKFLOW_BUILDER.md)
+- [Theme Options](./THEME_OPTIONS.md)
+- [infra/ README](./infra/README.md)
 
 ## Development Workflow
 
@@ -241,7 +253,9 @@ npm test                 # Run all tests
 npm run test:coverage    # Run tests with coverage
 npm run lint             # Run ESLint
 npm run format           # Format code with Prettier
-npm run db:migrate       # Run database migrations
+npm run db:generate      # Regenerate Prisma client
+npm run db:migrate       # Run database migrations (dev)
+npm run db:seed          # Seed the database
 npm run db:studio        # Open Prisma Studio
 npm run infra:up         # Start infrastructure
 npm run infra:down       # Stop infrastructure
