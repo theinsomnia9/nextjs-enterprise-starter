@@ -31,11 +31,9 @@ describe('pusherServer', () => {
   it('triggerApprovalEvent calls trigger on the approval-queue channel', async () => {
     const { pusherServer, triggerApprovalEvent } = await import('@/lib/approvals/pusherServer')
     await triggerApprovalEvent('request:submitted', { requestId: 'abc' })
-    expect(pusherServer.trigger).toHaveBeenCalledWith(
-      'approval-queue',
-      'request:submitted',
-      { requestId: 'abc' }
-    )
+    expect(pusherServer.trigger).toHaveBeenCalledWith('approval-queue', 'request:submitted', {
+      requestId: 'abc',
+    })
   })
 
   it('triggerApprovalEvent resolves without throwing', async () => {

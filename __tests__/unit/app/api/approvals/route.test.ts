@@ -47,7 +47,9 @@ describe('POST /api/approvals', () => {
 
   it('returns 400 on missing title', async () => {
     server.use(
-      http.post('/api/approvals', () => HttpResponse.json({ error: 'Title is required' }, { status: 400 }))
+      http.post('/api/approvals', () =>
+        HttpResponse.json({ error: 'Title is required' }, { status: 400 })
+      )
     )
     const response = await fetch('/api/approvals', {
       method: 'POST',
