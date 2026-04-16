@@ -53,11 +53,21 @@ vi.mock('reactflow', async () => {
   }
 })
 
+function makeYjsMapMock() {
+  const store = new Map<string, unknown>()
+  return {
+    get: (key: string) => store.get(key),
+    set: (key: string, val: unknown) => store.set(key, val),
+    observe: vi.fn(),
+    unobserve: vi.fn(),
+  }
+}
+
 vi.mock('@/lib/approvals/yjsClient', () => ({
-  createYjsRoom: vi.fn().mockReturnValue({
+  createYjsRoom: vi.fn().mockImplementation(() => ({
     doc: {},
-    nodesMap: new Map(),
-    edgesMap: new Map(),
+    nodesMap: makeYjsMapMock(),
+    edgesMap: makeYjsMapMock(),
     awareness: {
       setLocalStateField: vi.fn(),
       on: vi.fn(),
@@ -65,7 +75,7 @@ vi.mock('@/lib/approvals/yjsClient', () => ({
       getStates: vi.fn().mockReturnValue(new Map()),
     },
     provider: { disconnect: vi.fn(), destroy: vi.fn() },
-  }),
+  })),
   destroyYjsRoom: vi.fn(),
 }))
 
@@ -165,7 +175,12 @@ describe('ApprovalFlowDiagram', () => {
     render(<ApprovalFlowDiagram request={mockRequest} />)
     const reviewNode = screen.getByTestId('node-review')
     fireEvent.mouseUp(reviewNode)
-    expect(createYjsRoom).toHaveBeenCalled()
+    const room = (createYjsRoom as ReturnType<typeof vi.fn>).mock.results[0]?.value
+    expect(room).toBeDefined()
+    expect(room.nodesMap.get('review')).toMatchObject({
+      x: expect.any(Number),
+      y: expect.any(Number),
+    })
   })
 
   it('clicking same node twice deselects it', () => {

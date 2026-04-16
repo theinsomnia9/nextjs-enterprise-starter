@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { ApprovalFlowDiagram } from '@/components/approval/ApprovalFlowDiagram'
 import type { QueueRequest } from '@/components/approval/QueueDashboard'
@@ -22,24 +22,30 @@ export default function ApprovalDetailPage({ params }: ApprovalDetailPageProps) 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchRequest = useCallback(async () => {
-    try {
-      const res = await fetch('/api/approvals/queue')
-      if (!res.ok) throw new Error('Failed to load approval request')
-      const data = await res.json()
-      const found = (data.requests as QueueRequest[]).find((r) => r.id === params.id)
-      if (!found) throw new Error('Approval request not found')
-      setRequest(found)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Unknown error')
-    } finally {
-      setLoading(false)
-    }
-  }, [params.id])
-
   useEffect(() => {
-    fetchRequest()
-  }, [fetchRequest])
+    const controller = new AbortController()
+    setLoading(true)
+    setError(null)
+
+    fetch(`/api/approvals/${params.id}`, { signal: controller.signal })
+      .then(async (res) => {
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}))
+          throw new Error(body.error ?? 'Failed to load approval request')
+        }
+        return res.json() as Promise<QueueRequest>
+      })
+      .then((data) => {
+        setRequest(data)
+      })
+      .catch((e: Error) => {
+        if (e.name === 'AbortError') return
+        setError(e.message)
+      })
+      .finally(() => setLoading(false))
+
+    return () => controller.abort()
+  }, [params.id])
 
   if (loading) {
     return (
