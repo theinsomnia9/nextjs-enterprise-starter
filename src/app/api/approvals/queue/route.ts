@@ -19,7 +19,9 @@ export async function GET() {
     ])
 
     const counts = { PENDING: 0, REVIEWING: 0, APPROVED: 0, REJECTED: 0 } as Record<string, number>
-    statusGroups.forEach((g) => { counts[g.status] = g._count.id })
+    statusGroups.forEach((g) => {
+      counts[g.status] = g._count.id
+    })
 
     const configMap = new Map<string, PriorityConfigValues>(
       configs.map((c) => [

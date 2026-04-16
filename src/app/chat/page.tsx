@@ -145,21 +145,23 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="flex h-screen bg-white dark:bg-gray-900">
+    <div className="flex h-screen bg-background">
       <div
         className={cn(
-          'fixed inset-y-0 left-0 z-50 w-64 transform border-r border-gray-200 bg-white transition-transform dark:border-gray-700 dark:bg-gray-800',
+          'fixed inset-y-0 left-0 z-50 w-64 transform border-r border-border bg-card transition-transform',
           showHistory ? 'translate-x-0' : '-translate-x-full',
           'lg:relative lg:translate-x-0'
         )}
       >
         <div className="flex h-full flex-col">
-          <div className="flex h-12 items-center justify-between border-b border-gray-200 p-4 dark:border-gray-700">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 lg:flex-1">Chat History</h2>
+          <div className="flex h-12 items-center justify-between border-b border-border p-4">
+            <h2 className="text-lg font-semibold lg:flex-1">
+              Chat History
+            </h2>
             {showHistory && (
               <button
                 onClick={() => setShowHistory(false)}
-                className="rounded-lg py-1 px-2 text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800 lg:hidden"
+                className="rounded-lg p-2 text-muted-foreground hover:bg-accent lg:hidden interactive"
                 aria-label="Close history"
               >
                 <Menu className="h-5 w-5" />
@@ -179,25 +181,32 @@ export default function ChatPage() {
         </div>
       </div>
 
-      <div className={cn('flex flex-1 flex-col', showHistory && 'lg:ml-0 ml-64 transition-all duration-300')}>
-        <header className="flex h-12 items-center justify-between border-b border-gray-200 p-4 dark:border-gray-700">
+      <div
+        className={cn(
+          'flex flex-1 flex-col',
+          showHistory && 'ml-64 transition-all duration-300 lg:ml-0'
+        )}
+      >
+        <header className="flex h-12 items-center justify-between border-b border-border p-4">
           <div className="flex items-center gap-4 lg:flex-1">
             {!showHistory && (
               <button
                 data-testid="chat-history-toggle"
                 onClick={() => setShowHistory(!showHistory)}
-                className="lg:hidden"
+                className="lg:hidden interactive rounded-lg p-2 text-muted-foreground hover:bg-accent"
                 aria-label="Toggle chat history"
               >
-                <Menu className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+                <Menu className="h-5 w-5" />
               </button>
             )}
-            <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100 lg:hidden">Chat</h1>
+            <h1 className="text-xl font-semibold lg:hidden">
+              Chat
+            </h1>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={handleNewChat}
-              className="flex items-center gap-2 rounded-lg bg-blue-500 px-3 py-1 text-sm font-medium text-white hover:bg-blue-600"
+              className="flex items-center gap-2 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 interactive"
               aria-label="New chat"
             >
               <Plus className="h-4 w-4" />
@@ -206,7 +215,7 @@ export default function ChatPage() {
             <button
               data-testid="theme-toggle"
               onClick={toggleTheme}
-              className="rounded-lg px-3 py-1 text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
+              className="rounded-lg p-2 text-muted-foreground hover:bg-accent interactive"
               aria-label="Toggle theme"
             >
               {theme === 'light' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
@@ -218,11 +227,11 @@ export default function ChatPage() {
           {messages.length === 0 ? (
             <div className="flex h-full items-center justify-center">
               <div className="text-center">
-                <MessageSquare className="mx-auto h-12 w-12 text-gray-400" />
-                <h2 className="mt-4 text-lg font-medium text-gray-900 dark:text-gray-100">
+                <MessageSquare className="mx-auto h-12 w-12 text-muted-foreground" />
+                <h2 className="mt-4 text-lg font-medium">
                   Start a conversation
                 </h2>
-                <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                <p className="mt-2 text-sm text-muted-foreground">
                   Send a message to begin chatting with the AI assistant
                 </p>
               </div>
@@ -240,7 +249,7 @@ export default function ChatPage() {
                 />
               ))}
               {error && (
-                <div className="rounded-lg bg-red-50 p-4 text-sm text-red-800 dark:bg-red-900/20 dark:text-red-200">
+                <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-4 text-sm text-destructive">
                   Error: {error}
                 </div>
               )}
@@ -249,7 +258,7 @@ export default function ChatPage() {
           )}
         </main>
 
-        <footer className="border-t border-gray-200 p-4 dark:border-gray-700">
+        <footer className="border-t border-border p-4">
           <div className="mx-auto max-w-3xl">
             <ChatInput onSend={handleSendMessage} disabled={isStreaming} />
           </div>

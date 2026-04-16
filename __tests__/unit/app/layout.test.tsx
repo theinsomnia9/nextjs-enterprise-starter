@@ -2,10 +2,6 @@ import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '../../setup/test-utils'
 import RootLayout, { metadata } from '@/app/layout'
 
-vi.mock('@/components/theme/ThemeToggle', () => ({
-  default: () => <button aria-label="Toggle theme">Theme Toggle Mock</button>,
-}))
-
 vi.mock('next/font/google', () => ({
   Inter: () => ({
     className: 'inter-mock',
@@ -23,14 +19,14 @@ describe('RootLayout', () => {
     expect(screen.getByText('Test Content')).toBeInTheDocument()
   })
 
-  it('should include ThemeToggle component', () => {
-    render(
+  it('should render with Inter font class', () => {
+    const { container } = render(
       <RootLayout>
         <div>Content</div>
       </RootLayout>
     )
 
-    expect(screen.getByRole('button', { name: /toggle theme/i })).toBeInTheDocument()
+    expect(container.querySelector('.inter-mock')).toBeInTheDocument()
   })
 })
 

@@ -19,10 +19,10 @@ interface ApprovalPipelineProps {
 const STAGE_LABELS: (keyof StatusCounts)[] = ['PENDING', 'REVIEWING', 'APPROVED', 'REJECTED']
 
 const STAGE_COLORS: Record<keyof StatusCounts, string> = {
-  PENDING: '#6366f1',
-  REVIEWING: '#f59e0b',
-  APPROVED: '#22c55e',
-  REJECTED: '#ef4444',
+  PENDING: 'hsl(var(--status-pending))',
+  REVIEWING: 'hsl(var(--status-reviewing))',
+  APPROVED: 'hsl(var(--status-approved))',
+  REJECTED: 'hsl(var(--status-rejected))',
 }
 
 export function ApprovalPipeline({ initialCounts, onRefresh }: ApprovalPipelineProps) {
