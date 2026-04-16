@@ -53,10 +53,14 @@
     "next": "14.2.3",
     "next-auth": "^5.0.0-beta.18",
     "openai": "^4.104.0",
+    "pusher": "^5.3.3",
+    "pusher-js": "^8.5.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "reactflow": "^11.11.3",
     "tailwind-merge": "^2.3.0",
+    "y-websocket": "^3.0.0",
+    "yjs": "^13.6.30",
     "zod": "^3.23.8"
   },
   "devDependencies": {
