@@ -31,7 +31,7 @@ fi
 cd "$(dirname "$0")/../infra" || exit 1
 
 # Start infrastructure services
-echo "📦 Starting PostgreSQL, Jaeger, Prometheus, and Grafana..."
+echo "📦 Starting PostgreSQL, Jaeger, Prometheus, Grafana, Soketi, and y-websocket..."
 docker-compose up -d
 
 # Wait for services to be healthy
@@ -52,4 +52,6 @@ echo "   - Jaeger UI:           http://localhost:16686"
 echo "   - Prometheus:          http://localhost:9090"
 echo "   - Grafana:             http://localhost:3001 (admin/admin)"
 echo "   - OTEL Collector:      http://localhost:4318"
+echo "   - Soketi (WebSocket):  ws://localhost:6001"
+echo "   - y-websocket:         ws://localhost:1234"
 echo ""
