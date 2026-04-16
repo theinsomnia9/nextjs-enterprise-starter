@@ -18,6 +18,7 @@ export type QueueRequest = {
 
 interface QueueDashboardProps {
   requests: QueueRequest[]
+  counts?: StatusCounts
   currentUserId: string
   onLock?: (requestId: string) => void
   onRelease?: (requestId: string) => void
@@ -39,19 +40,22 @@ function isLockActive(lockExpiresAt: string | null): boolean {
 
 export function QueueDashboard({
   requests,
+  counts: countsProp,
   currentUserId,
   onLock,
   onRelease,
   onApprove,
   onReject,
 }: QueueDashboardProps) {
-  const counts = useMemo<StatusCounts>(() => {
+  const derivedCounts = useMemo<StatusCounts>(() => {
     const c: StatusCounts = { PENDING: 0, REVIEWING: 0, APPROVED: 0, REJECTED: 0 }
     requests.forEach((r) => {
       if (r.status in c) c[r.status as keyof StatusCounts]++
     })
     return c
   }, [requests])
+
+  const counts = countsProp ?? derivedCounts
 
   return (
     <div data-testid="queue-dashboard" className="flex flex-col gap-6 p-4">

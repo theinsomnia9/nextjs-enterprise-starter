@@ -2,11 +2,13 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { QueueDashboard, type QueueRequest } from '@/components/approval/QueueDashboard'
+import type { StatusCounts } from '@/components/approval/ApprovalPipeline'
 
 const CURRENT_USER_ID = 'dev-user-alice' // TODO: replace with session.user.id when auth is configured
 
 export default function ApprovalsPage() {
   const [requests, setRequests] = useState<QueueRequest[]>([])
+  const [counts, setCounts] = useState<StatusCounts>({ PENDING: 0, REVIEWING: 0, APPROVED: 0, REJECTED: 0 })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -20,6 +22,7 @@ export default function ApprovalsPage() {
       if (!res.ok) throw new Error('Failed to load queue')
       const data = await res.json()
       setRequests(data.requests)
+      if (data.counts) setCounts(data.counts as StatusCounts)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Unknown error')
     } finally {
@@ -118,6 +121,7 @@ export default function ApprovalsPage() {
         onLock={handleLock}
         onRelease={handleRelease}
         onApprove={handleApprove}
+        counts={counts}
         onReject={handleReject}
       />
 
