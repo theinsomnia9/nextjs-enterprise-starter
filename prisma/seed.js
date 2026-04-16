@@ -52,7 +52,23 @@ async function main() {
     })
   }
 
+  const SAMPLE_REQUESTS = [
+    { title: 'Deploy payment service v3.2', description: 'Critical payment gateway upgrade', category: 'P1', requesterId: 'dev-user-alice' },
+    { title: 'Hotfix: auth token expiry bug', description: 'Tokens expiring 1h early in prod', category: 'P1', requesterId: 'dev-user-bob' },
+    { title: 'Rotate production API keys', description: 'Scheduled quarterly key rotation', category: 'P2', requesterId: 'dev-user-carol' },
+    { title: 'Enable feature flag: new dashboard', description: 'Roll out redesigned dashboard to 100%', category: 'P2', requesterId: 'dev-user-alice' },
+    { title: 'Update Node.js to v22 LTS', description: 'Runtime upgrade across all services', category: 'P3', requesterId: 'dev-user-bob' },
+    { title: 'Add Datadog APM integration', description: 'Observability improvements', category: 'P3', requesterId: 'dev-user-carol' },
+    { title: 'Bump eslint to v9', description: 'Dev tooling upgrade', category: 'P4', requesterId: 'dev-user-alice' },
+    { title: 'Archive old audit logs (>2y)', description: 'Storage cost reduction', category: 'P4', requesterId: 'dev-user-bob' },
+  ]
+
+  for (const req of SAMPLE_REQUESTS) {
+    await prisma.approvalRequest.create({ data: req })
+  }
+
   console.log('Seeded priority configs for P1-P4')
+  console.log(`Seeded ${SAMPLE_REQUESTS.length} sample approval requests`)
   console.log('Dev users ready:')
   DEV_USERS.forEach((u) => console.log(`  ${u.name}: id=${u.id}  email=${u.email}`))
 }
