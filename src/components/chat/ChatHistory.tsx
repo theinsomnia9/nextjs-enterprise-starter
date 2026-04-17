@@ -56,11 +56,7 @@ export function ChatHistory({
   }
 
   if (chats.length === 0) {
-    return (
-      <div className="p-4 text-center text-sm text-muted-foreground">
-        No chat history yet
-      </div>
-    )
+    return <div className="p-4 text-center text-sm text-muted-foreground">No chat history yet</div>
   }
 
   return (
@@ -70,7 +66,7 @@ export function ChatHistory({
           onClick={onNewChatClick}
           className={cn(
             'flex w-full items-center gap-3 rounded-lg p-3 text-left',
-            'bg-primary text-primary-foreground interactive'
+            'interactive bg-primary text-primary-foreground'
           )}
           data-testid="new-chat-indicator"
         >
@@ -86,10 +82,8 @@ export function ChatHistory({
           key={chat.id}
           onClick={() => onSelectChat(chat.id)}
           className={cn(
-            'flex w-full items-center gap-3 rounded-lg p-3 text-left interactive',
-            currentChatId === chat.id
-              ? 'bg-primary text-primary-foreground'
-              : 'hover:bg-accent'
+            'interactive flex w-full items-center gap-3 rounded-lg p-3 text-left',
+            currentChatId === chat.id ? 'bg-primary text-primary-foreground' : 'hover:bg-accent'
           )}
         >
           <MessageSquare className="h-4 w-4 flex-shrink-0" />

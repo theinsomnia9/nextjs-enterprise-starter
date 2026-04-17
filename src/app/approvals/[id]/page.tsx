@@ -10,10 +10,14 @@ interface ApprovalDetailPageProps {
 }
 
 const STATUS_BADGE: Record<string, string> = {
-  PENDING: 'bg-[hsl(var(--status-pending))]/10 text-[hsl(var(--status-pending))] border border-[hsl(var(--status-pending))]/20',
-  REVIEWING: 'bg-[hsl(var(--status-reviewing))]/10 text-[hsl(var(--status-reviewing))] border border-[hsl(var(--status-reviewing))]/20',
-  APPROVED: 'bg-[hsl(var(--status-approved))]/10 text-[hsl(var(--status-approved))] border border-[hsl(var(--status-approved))]/20',
-  REJECTED: 'bg-[hsl(var(--status-rejected))]/10 text-[hsl(var(--status-rejected))] border border-[hsl(var(--status-rejected))]/20',
+  PENDING:
+    'bg-[hsl(var(--status-pending))]/10 text-[hsl(var(--status-pending))] border border-[hsl(var(--status-pending))]/20',
+  REVIEWING:
+    'bg-[hsl(var(--status-reviewing))]/10 text-[hsl(var(--status-reviewing))] border border-[hsl(var(--status-reviewing))]/20',
+  APPROVED:
+    'bg-[hsl(var(--status-approved))]/10 text-[hsl(var(--status-approved))] border border-[hsl(var(--status-approved))]/20',
+  REJECTED:
+    'bg-[hsl(var(--status-rejected))]/10 text-[hsl(var(--status-rejected))] border border-[hsl(var(--status-rejected))]/20',
 }
 
 export default function ApprovalDetailPage({ params }: ApprovalDetailPageProps) {
@@ -83,14 +87,15 @@ export default function ApprovalDetailPage({ params }: ApprovalDetailPageProps) 
           </button>
           <div className="flex flex-wrap items-center gap-3">
             <span
-              className={`rounded px-2 py-0.5 text-xs font-bold ${request.category === 'P1'
+              className={`rounded px-2 py-0.5 text-xs font-bold ${
+                request.category === 'P1'
                   ? 'bg-[hsl(var(--priority-p1))]/10 text-[hsl(var(--priority-p1))]'
                   : request.category === 'P2'
                     ? 'bg-[hsl(var(--priority-p2))]/10 text-[hsl(var(--priority-p2))]'
                     : request.category === 'P3'
                       ? 'bg-[hsl(var(--priority-p3))]/10 text-[hsl(var(--priority-p3))]'
                       : 'bg-[hsl(var(--priority-p4))]/10 text-[hsl(var(--priority-p4))]'
-                }`}
+              }`}
             >
               {request.category}
             </span>
