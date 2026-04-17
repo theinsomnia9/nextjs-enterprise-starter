@@ -122,7 +122,7 @@ export function QueueDashboard({
                         e.stopPropagation()
                         onLock?.(req.id)
                       }}
-                      className="rounded bg-[hsl(var(--status-pending))] px-3 py-1 text-xs font-medium text-white hover:opacity-90 disabled:opacity-50 interactive"
+                      className="interactive rounded bg-[hsl(var(--status-pending))] px-3 py-1 text-xs font-medium text-white hover:opacity-90 disabled:opacity-50"
                       disabled={locked && !lockedByMe}
                     >
                       Lock
@@ -136,7 +136,7 @@ export function QueueDashboard({
                           e.stopPropagation()
                           onApprove?.(req.id)
                         }}
-                        className="rounded bg-[hsl(var(--status-approved))] px-3 py-1 text-xs font-medium text-white hover:opacity-90 interactive"
+                        className="interactive rounded bg-[hsl(var(--status-approved))] px-3 py-1 text-xs font-medium text-white hover:opacity-90"
                       >
                         Approve
                       </button>
@@ -145,7 +145,7 @@ export function QueueDashboard({
                           e.stopPropagation()
                           onReject?.(req.id)
                         }}
-                        className="rounded bg-[hsl(var(--status-rejected))] px-3 py-1 text-xs font-medium text-white hover:opacity-90 interactive"
+                        className="interactive rounded bg-[hsl(var(--status-rejected))] px-3 py-1 text-xs font-medium text-white hover:opacity-90"
                       >
                         Reject
                       </button>
@@ -154,7 +154,7 @@ export function QueueDashboard({
                           e.stopPropagation()
                           onRelease?.(req.id)
                         }}
-                        className="rounded border border-border px-3 py-1 text-xs font-medium hover:bg-accent interactive"
+                        className="interactive rounded border border-border px-3 py-1 text-xs font-medium hover:bg-accent"
                       >
                         Release
                       </button>
