@@ -1,13 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { use, useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { ApprovalFlowDiagram } from '@/components/approval/ApprovalFlowDiagram'
 import type { QueueRequest } from '@/components/approval/QueueDashboard'
 import { CATEGORY_COLORS } from '@/lib/approvals/constants'
 
 interface ApprovalDetailPageProps {
-  params: { id: string }
+  params: Promise<{ id: string }>
 }
 
 const STATUS_BADGE: Record<string, string> = {
@@ -22,6 +22,7 @@ const STATUS_BADGE: Record<string, string> = {
 }
 
 export default function ApprovalDetailPage({ params }: ApprovalDetailPageProps) {
+  const { id } = use(params)
   const router = useRouter()
   const [request, setRequest] = useState<QueueRequest | null>(null)
   const [loading, setLoading] = useState(true)
@@ -32,7 +33,7 @@ export default function ApprovalDetailPage({ params }: ApprovalDetailPageProps) 
     setLoading(true)
     setError(null)
 
-    fetch(`/api/approvals/${params.id}`, { signal: controller.signal })
+    fetch(`/api/approvals/${id}`, { signal: controller.signal })
       .then(async (res) => {
         if (!res.ok) {
           const body = await res.json().catch(() => ({}))
@@ -50,7 +51,7 @@ export default function ApprovalDetailPage({ params }: ApprovalDetailPageProps) 
       .finally(() => setLoading(false))
 
     return () => controller.abort()
-  }, [params.id])
+  }, [id])
 
   if (loading) {
     return (

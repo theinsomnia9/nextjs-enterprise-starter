@@ -8,7 +8,7 @@ const releaseSchema = z.object({
   reviewerId: z.string().min(1),
 })
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   return createSpan('approvals.release', async () => {
     const body = await req.json()
     const parsed = releaseSchema.safeParse(body)
@@ -16,7 +16,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       return NextResponse.json({ error: parsed.error.errors[0].message }, { status: 400 })
     }
 
-    const { id } = params
+    const { id } = await params
     const existing = await prisma.approvalRequest.findUnique({
       where: { id },
       select: { assigneeId: true, status: true },

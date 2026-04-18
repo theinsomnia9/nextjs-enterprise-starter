@@ -8,9 +8,9 @@ const DEFAULT_CONFIGS = new Map(
   getDefaultPriorityConfig().map((c) => [c.category, c as PriorityConfigValues])
 )
 
-export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   return createSpan('approvals.get', async () => {
-    const { id } = params
+    const { id } = await params
 
     const [request, dbConfigs] = await Promise.all([
       prisma.approvalRequest.findUnique({

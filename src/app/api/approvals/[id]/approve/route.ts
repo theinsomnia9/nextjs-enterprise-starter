@@ -8,7 +8,7 @@ const approveSchema = z.object({
   approverId: z.string().min(1, 'Approver ID is required'),
 })
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   return createSpan('approvals.approve', async () => {
     const body = await req.json()
     const parsed = approveSchema.safeParse(body)
@@ -16,7 +16,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       return NextResponse.json({ error: parsed.error.errors[0].message }, { status: 400 })
     }
 
-    const { id } = params
+    const { id } = await params
     const { approverId } = parsed.data
 
     const updated = await prisma.$transaction(async (tx) => {

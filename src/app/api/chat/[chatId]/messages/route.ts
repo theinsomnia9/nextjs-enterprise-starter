@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
-export async function GET(_req: NextRequest, { params }: { params: { chatId: string } }) {
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ chatId: string }> }) {
   try {
-    const { chatId } = params
+    const { chatId } = await params
 
     const messages = await prisma.message.findMany({
       where: { chatId },

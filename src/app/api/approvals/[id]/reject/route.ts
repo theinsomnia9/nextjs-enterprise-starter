@@ -9,7 +9,7 @@ const rejectBodySchema = rejectApprovalSchema.extend({
   rejectorId: z.string().min(1, 'Rejector ID is required'),
 })
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   return createSpan('approvals.reject', async () => {
     const body = await req.json()
     const parsed = rejectBodySchema.safeParse(body)
@@ -17,7 +17,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       return NextResponse.json({ error: parsed.error.errors[0].message }, { status: 400 })
     }
 
-    const { id } = params
+    const { id } = await params
     const { rejectorId, reason } = parsed.data
 
     const updated = await prisma.$transaction(async (tx) => {

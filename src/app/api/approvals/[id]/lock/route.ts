@@ -8,7 +8,7 @@ const lockSchema = z.object({
   reviewerId: z.string().min(1, 'Reviewer ID is required'),
 })
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   return createSpan('approvals.lock', async () => {
     const body = await req.json()
     const parsed = lockSchema.safeParse(body)
@@ -16,7 +16,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       return NextResponse.json({ error: parsed.error.errors[0].message }, { status: 400 })
     }
 
-    const { id } = params
+    const { id } = await params
     const { reviewerId } = parsed.data
 
     const updated = await prisma.$transaction(async (tx) => {
