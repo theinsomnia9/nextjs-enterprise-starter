@@ -3,12 +3,14 @@
 import { useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { ApprovalPipeline, type StatusCounts } from './ApprovalPipeline'
+import { CATEGORY_COLORS } from '@/lib/approvals/constants'
+import type { ApprovalStatusType, PriorityCategory } from '@/lib/approvals/types'
 
 export type QueueRequest = {
   id: string
   title: string
-  category: string
-  status: string
+  category: PriorityCategory
+  status: ApprovalStatusType
   priorityScore: number
   requester: { id: string; name: string | null; email: string | null }
   assignee: { id: string; name: string | null; email: string | null } | null
@@ -28,12 +30,6 @@ interface QueueDashboardProps {
   onReject?: (requestId: string) => void
 }
 
-const CATEGORY_COLORS: Record<string, string> = {
-  P1: 'bg-[hsl(var(--priority-p1))]/10 text-[hsl(var(--priority-p1))]',
-  P2: 'bg-[hsl(var(--priority-p2))]/10 text-[hsl(var(--priority-p2))]',
-  P3: 'bg-[hsl(var(--priority-p3))]/10 text-[hsl(var(--priority-p3))]',
-  P4: 'bg-[hsl(var(--priority-p4))]/10 text-[hsl(var(--priority-p4))]',
-}
 
 function isLockActive(lockExpiresAt: string | null): boolean {
   if (!lockExpiresAt) return false

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { ApprovalFlowDiagram } from '@/components/approval/ApprovalFlowDiagram'
 import type { QueueRequest } from '@/components/approval/QueueDashboard'
+import { CATEGORY_COLORS } from '@/lib/approvals/constants'
 
 interface ApprovalDetailPageProps {
   params: { id: string }
@@ -87,15 +88,7 @@ export default function ApprovalDetailPage({ params }: ApprovalDetailPageProps) 
           </button>
           <div className="flex flex-wrap items-center gap-3">
             <span
-              className={`rounded px-2 py-0.5 text-xs font-bold ${
-                request.category === 'P1'
-                  ? 'bg-[hsl(var(--priority-p1))]/10 text-[hsl(var(--priority-p1))]'
-                  : request.category === 'P2'
-                    ? 'bg-[hsl(var(--priority-p2))]/10 text-[hsl(var(--priority-p2))]'
-                    : request.category === 'P3'
-                      ? 'bg-[hsl(var(--priority-p3))]/10 text-[hsl(var(--priority-p3))]'
-                      : 'bg-[hsl(var(--priority-p4))]/10 text-[hsl(var(--priority-p4))]'
-              }`}
+              className={`rounded px-2 py-0.5 text-xs font-bold ${CATEGORY_COLORS[request.category] ?? ''}`}
             >
               {request.category}
             </span>
