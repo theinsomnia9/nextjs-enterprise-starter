@@ -50,34 +50,30 @@ export function ChatHistory({
   if (loading) {
     return (
       <div className="flex items-center justify-center p-4">
-        <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     )
   }
 
   if (chats.length === 0) {
-    return (
-      <div className="p-4 text-center text-sm text-gray-500 dark:text-gray-400">
-        No chat history yet
-      </div>
-    )
+    return <div className="p-4 text-center text-sm text-muted-foreground">No chat history yet</div>
   }
 
   return (
-    <div className="space-y-2 p-4">
+    <div className="space-y-1 p-3">
       {hasActiveChat && currentChatId === null && (
         <button
           onClick={onNewChatClick}
           className={cn(
-            'flex w-full items-center gap-3 rounded-lg p-3 text-left transition-colors',
-            'bg-blue-500 text-white'
+            'flex w-full items-center gap-3 rounded-lg p-3 text-left',
+            'interactive bg-primary text-primary-foreground'
           )}
           data-testid="new-chat-indicator"
         >
           <Plus className="h-4 w-4 flex-shrink-0" />
           <div className="min-w-0 flex-1">
             <div className="truncate text-sm font-medium">{activeChatName}</div>
-            <div className="text-xs text-blue-100">Current conversation</div>
+            <div className="text-xs text-primary-foreground/70">Current conversation</div>
           </div>
         </button>
       )}
@@ -86,10 +82,8 @@ export function ChatHistory({
           key={chat.id}
           onClick={() => onSelectChat(chat.id)}
           className={cn(
-            'flex w-full items-center gap-3 rounded-lg p-3 text-left transition-colors',
-            currentChatId === chat.id
-              ? 'bg-blue-500 text-white'
-              : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+            'interactive flex w-full items-center gap-3 rounded-lg p-3 text-left',
+            currentChatId === chat.id ? 'bg-primary text-primary-foreground' : 'hover:bg-accent'
           )}
         >
           <MessageSquare className="h-4 w-4 flex-shrink-0" />
@@ -98,7 +92,7 @@ export function ChatHistory({
             <div
               className={cn(
                 'text-xs',
-                currentChatId === chat.id ? 'text-blue-100' : 'text-gray-500 dark:text-gray-400'
+                currentChatId === chat.id ? 'text-primary-foreground/70' : 'text-muted-foreground'
               )}
             >
               {new Date(chat.updatedAt).toLocaleDateString()}

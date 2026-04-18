@@ -35,7 +35,7 @@ export default function ThemeToggle() {
   if (!mounted) {
     return (
       <button
-        className="rounded-md border border-border bg-card p-2 transition-colors hover:bg-accent"
+        className="interactive rounded-md border border-border bg-card p-2 hover:bg-accent"
         aria-label="Toggle theme"
         disabled
       >
@@ -47,7 +47,7 @@ export default function ThemeToggle() {
   return (
     <button
       onClick={toggleTheme}
-      className="rounded-md border border-border bg-card p-2 transition-colors hover:bg-accent"
+      className="interactive rounded-md border border-border bg-card p-2 hover:bg-accent"
       aria-label="Toggle theme"
     >
       {theme === 'light' ? (

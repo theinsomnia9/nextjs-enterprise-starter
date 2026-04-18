@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import { ApprovalPipeline, type StatusCounts } from './ApprovalPipeline'
 
 export type QueueRequest = {
@@ -28,10 +29,10 @@ interface QueueDashboardProps {
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
-  P1: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
-  P2: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300',
-  P3: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300',
-  P4: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
+  P1: 'bg-[hsl(var(--priority-p1))]/10 text-[hsl(var(--priority-p1))]',
+  P2: 'bg-[hsl(var(--priority-p2))]/10 text-[hsl(var(--priority-p2))]',
+  P3: 'bg-[hsl(var(--priority-p3))]/10 text-[hsl(var(--priority-p3))]',
+  P4: 'bg-[hsl(var(--priority-p4))]/10 text-[hsl(var(--priority-p4))]',
 }
 
 function isLockActive(lockExpiresAt: string | null): boolean {
@@ -49,6 +50,8 @@ export function QueueDashboard({
   onApprove,
   onReject,
 }: QueueDashboardProps) {
+  const router = useRouter()
+
   const derivedCounts = useMemo<StatusCounts>(() => {
     const c: StatusCounts = { PENDING: 0, REVIEWING: 0, APPROVED: 0, REJECTED: 0 }
     requests.forEach((r) => {
@@ -76,7 +79,13 @@ export function QueueDashboard({
             return (
               <div
                 key={req.id}
-                className="flex items-center justify-between rounded-lg border border-border bg-card px-4 py-3 shadow-sm"
+                data-testid={`queue-item-${req.id}`}
+                tabIndex={0}
+                onClick={() => router.push(`/approvals/${req.id}`)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') router.push(`/approvals/${req.id}`)
+                }}
+                className="flex cursor-pointer items-center justify-between rounded-lg border border-border bg-card px-4 py-3 shadow-sm transition-colors hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <div className="flex min-w-0 flex-col gap-1">
                   <div className="flex items-center gap-2">
@@ -89,10 +98,10 @@ export function QueueDashboard({
                     {locked && (
                       <span
                         data-testid={`lock-indicator-${req.id}`}
-                        className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400"
+                        className="flex items-center gap-1 text-xs text-[hsl(var(--status-reviewing))]"
                         title={`Locked by ${req.assignee?.name ?? 'reviewer'}`}
                       >
-                        🔒
+                        <span>🔒</span>
                         {req.assignee?.name && (
                           <span className="hidden sm:inline">{req.assignee.name}</span>
                         )}
@@ -109,8 +118,11 @@ export function QueueDashboard({
                 <div className="flex shrink-0 items-center gap-2">
                   {req.status === 'PENDING' && (
                     <button
-                      onClick={() => onLock?.(req.id)}
-                      className="rounded bg-indigo-600 px-3 py-1 text-xs font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onLock?.(req.id)
+                      }}
+                      className="interactive rounded bg-[hsl(var(--status-pending))] px-3 py-1 text-xs font-medium text-white hover:opacity-90 disabled:opacity-50"
                       disabled={locked && !lockedByMe}
                     >
                       Lock
@@ -120,20 +132,29 @@ export function QueueDashboard({
                   {req.status === 'REVIEWING' && lockedByMe && (
                     <>
                       <button
-                        onClick={() => onApprove?.(req.id)}
-                        className="rounded bg-green-600 px-3 py-1 text-xs font-medium text-white hover:bg-green-700"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onApprove?.(req.id)
+                        }}
+                        className="interactive rounded bg-[hsl(var(--status-approved))] px-3 py-1 text-xs font-medium text-white hover:opacity-90"
                       >
                         Approve
                       </button>
                       <button
-                        onClick={() => onReject?.(req.id)}
-                        className="rounded bg-red-600 px-3 py-1 text-xs font-medium text-white hover:bg-red-700"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onReject?.(req.id)
+                        }}
+                        className="interactive rounded bg-[hsl(var(--status-rejected))] px-3 py-1 text-xs font-medium text-white hover:opacity-90"
                       >
                         Reject
                       </button>
                       <button
-                        onClick={() => onRelease?.(req.id)}
-                        className="rounded border border-border px-3 py-1 text-xs font-medium hover:bg-accent"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onRelease?.(req.id)
+                        }}
+                        className="interactive rounded border border-border px-3 py-1 text-xs font-medium hover:bg-accent"
                       >
                         Release
                       </button>

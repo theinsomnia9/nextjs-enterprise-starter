@@ -57,9 +57,9 @@ The builder initializes with 3 connected nodes:
 ## Usage
 
 ### Access the Builder
-1. Navigate to home page at `http://localhost:3002`
-2. Click "Open Builder" button
-3. Or directly visit `http://localhost:3002/builder`
+1. Navigate to the dev navigation homepage at `http://localhost:3000`
+2. Click the **Workflow Builder** card
+3. Or directly visit `http://localhost:3000/builder`
 
 ### Controls
 - **Add Node**: Creates a new node at random position
@@ -89,8 +89,8 @@ The builder initializes with 3 connected nodes:
 src/
 ├── app/
 │   ├── builder/
-│   │   └── page.tsx          # Builder route
-│   └── page.tsx              # Home with link to builder
+│   │   └── page.tsx          # Builder
+│   └── page.tsx              # Dev navigation homepage (links to all routes)
 └── components/
     └── workflow/
         ├── WorkflowBuilder.tsx   # Main component

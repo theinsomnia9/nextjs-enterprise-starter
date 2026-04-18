@@ -37,9 +37,9 @@ export function ChatInput({ onSend, disabled = false }: ChatInputProps) {
         placeholder="Type your message..."
         disabled={disabled}
         className={cn(
-          'flex-1 rounded-lg border border-gray-300 px-4 py-2 text-sm',
-          'focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500',
-          'dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100',
+          'flex-1 rounded-lg border border-input bg-background px-4 py-2 text-sm',
+          'focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20',
+          'placeholder:text-muted-foreground',
           'disabled:cursor-not-allowed disabled:opacity-50'
         )}
       />
@@ -48,9 +48,10 @@ export function ChatInput({ onSend, disabled = false }: ChatInputProps) {
         disabled={disabled || !message.trim()}
         aria-label="Send message"
         className={cn(
-          'flex items-center gap-2 rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white',
-          'hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500',
-          'disabled:cursor-not-allowed disabled:opacity-50'
+          'flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground',
+          'hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-ring/20',
+          'disabled:cursor-not-allowed disabled:opacity-50',
+          'interactive'
         )}
       >
         <Send className="h-4 w-4" />

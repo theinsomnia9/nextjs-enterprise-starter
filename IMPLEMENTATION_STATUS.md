@@ -83,26 +83,39 @@
 nextjs-boiler-plate/
 ├── src/
 │   ├── app/
+│   │   ├── api/chat/           # Chat SSE + history + messages endpoints
+│   │   ├── api/approvals/      # Approval CRUD + lock + [id] endpoints
+│   │   ├── api/cron/           # Lock expiry cron
+│   │   ├── api/pusher/         # Pusher auth
+│   │   ├── chat/page.tsx       # Chat page
+│   │   ├── builder/page.tsx    # Workflow builder page
+│   │   ├── approvals/page.tsx  # Approvals dashboard
+│   │   ├── approvals/[id]/     # Approval detail + flow diagram
 │   │   ├── globals.css
 │   │   ├── layout.tsx
-│   │   └── page.tsx
+│   │   └── page.tsx            # Dev navigation homepage
+│   ├── components/
+│   │   ├── chat/               # ChatMessage, ChatInput, ChatHistory
+│   │   ├── workflow/           # WorkflowBuilder, CustomNode
+│   │   ├── approval/           # QueueDashboard, ApprovalFlowDiagram, ApprovalPipeline
+│   │   ├── theme/              # ThemeToggle
+│   │   └── ClientProviders.tsx
 │   ├── lib/
-│   │   ├── telemetry/
-│   │   │   ├── instrumentation.node.ts
-│   │   │   ├── instrumentation.edge.ts
-│   │   │   └── tracing.ts
+│   │   ├── telemetry/          # instrumentation.node.ts, tracing.ts
+│   │   ├── approvals/          # constants, priorityScore, pusherServer, schemas, types, yjsClient
 │   │   ├── prisma.ts
 │   │   └── utils.ts
+│   ├── providers/ThemeProvider.tsx
 │   └── instrumentation.ts
 ├── prisma/
-│   └── schema.prisma
+│   ├── schema.prisma
+│   ├── migrations/
+│   └── seed.js
 ├── __tests__/
+│   ├── unit/                   # 164+ unit tests
+│   ├── e2e/                    # home, chat, builder, approvals-flow, theme specs
 │   ├── setup/
-│   │   ├── vitest.setup.ts
-│   │   └── test-utils.tsx
 │   └── mocks/
-│       ├── server.ts
-│       └── handlers/
 ├── infra/
 │   ├── docker-compose.yml
 │   ├── otel-collector-config.yaml
@@ -110,137 +123,97 @@ nextjs-boiler-plate/
 │   ├── grafana/
 │   ├── scripts/
 │   └── README.md
-├── Configuration files (20+)
-└── Documentation (4 major guides)
+└── scripts/                    # start-infra.sh, stop-infra.sh
 ```
+
+## ✅ Implemented Features
+
+The following features are fully built, tested, and committed:
+
+### 1. Real-time Chat (SSE + OpenAI)
+**Status:** Complete
+- ✅ `POST /api/chat` — streams OpenAI GPT-4o-mini responses via SSE
+- ✅ `GET /api/chat/history` — returns recent chats (last 50)
+- ✅ `GET /api/chat/[chatId]/messages` — returns messages for a chat
+- ✅ `ChatMessage`, `ChatInput`, `ChatHistory` components
+- ✅ Full chat page at `/chat` with streaming, history sidebar, theme toggle
+- ✅ Messages persisted to PostgreSQL via Prisma
+- ✅ OpenTelemetry spans on all routes
+- See [CHAT_IMPLEMENTATION.md](./CHAT_IMPLEMENTATION.md) for details
+
+### 2. Visual Workflow Builder
+**Status:** Complete
+- ✅ `WorkflowBuilder` component with ReactFlow canvas
+- ✅ `CustomNode` with connection handles
+- ✅ Add/delete nodes, connect edges, minimap, controls
+- ✅ Builder page at `/builder`
+- See [WORKFLOW_BUILDER.md](./WORKFLOW_BUILDER.md) for details
+
+### 3. Approval Queue
+**Status:** Complete
+- ✅ `GET/POST /api/approvals` — list and create approval requests
+- ✅ `GET/PATCH /api/approvals/[id]` — fetch and action (APPROVE/REJECT) a request
+- ✅ `POST /api/approvals/[id]/lock` — optimistic locking for reviewers
+- ✅ Cron job at `/api/cron` for expiring stale locks
+- ✅ Priority scoring (`P1`–`P4`) with aging factor
+- ✅ Yjs-based real-time collaboration on the flow diagram
+- ✅ Pusher broadcasting for queue updates
+- ✅ `QueueDashboard`, `ApprovalFlowDiagram`, `ApprovalPipeline` components
+- ✅ Approvals list at `/approvals`, detail view at `/approvals/[id]`
+
+### 4. Theme Toggle
+**Status:** Complete
+- ✅ Light/dark mode toggle with localStorage persistence
+- ✅ System preference detection on first visit
+- ✅ CSS variable-based theming across all components
+- See [THEME_OPTIONS.md](./THEME_OPTIONS.md) for theme variants
+
+### 5. Dev Navigation Homepage
+**Status:** Complete
+- ✅ Homepage replaced with a dev navigation hub (`/`)
+- ✅ Clickable cards linking to `/chat`, `/builder`, `/approvals`
 
 ## ⏳ Pending Implementation
 
-The following features have been planned but require implementation:
-
 ### 1. Microsoft Entra ID Authentication
-**Status:** Schema ready, implementation needed
-- [ ] NextAuth.js configuration
-- [ ] Auth routes (`/api/auth/[...nextauth]`)
-- [ ] Protected route middleware
-- [ ] Login/logout UI components
-- [ ] Session management
-- [ ] Tests for auth flow
+**Status:** Schema and `@auth/prisma-adapter` ready, implementation needed
+- [ ] `src/lib/auth.ts` — NextAuth.js config with Entra ID provider
+- [ ] `src/app/api/auth/[...nextauth]/route.ts`
+- [ ] `src/middleware.ts` — protected route middleware
+- [ ] Login/logout UI and session management
 
-**Files needed:**
-- `src/lib/auth.ts`
-- `src/app/api/auth/[...nextauth]/route.ts`
-- `src/middleware.ts`
-- `src/app/(auth)/login/page.tsx`
-
-### 2. API Routes with Tests
-**Status:** Structure planned, implementation needed
-- [ ] User API routes
-- [ ] Chat API routes
-- [ ] Workflow API routes
-- [ ] Input validation with Zod
-- [ ] Error handling middleware
-- [ ] OpenTelemetry tracing on all routes
-- [ ] Unit and integration tests for each endpoint
-
-**Directories needed:**
-- `src/app/api/users/`
-- `src/app/api/chat/`
-- `src/app/api/workflows/`
-- `__tests__/integration/api/`
-
-### 3. Real-time Chat (SSE)
-**Status:** Database models ready, implementation needed
-- [ ] SSE endpoint (`/api/chat/stream`)
-- [ ] Message sending API
-- [ ] Chat room management
-- [ ] Chat UI components
-- [ ] Real-time message updates
-- [ ] Message persistence
-- [ ] Tests for chat functionality
-
-**Files needed:**
-- `src/app/api/chat/stream/route.ts`
-- `src/app/api/chat/messages/route.ts`
-- `src/components/chat/ChatRoom.tsx`
-- `src/components/chat/MessageList.tsx`
-- `src/components/chat/MessageInput.tsx`
-- `src/app/(protected)/chat/page.tsx`
-
-### 4. Workflow Builder with ReactFlow
-**Status:** Database models ready, ReactFlow in dependencies
-- [ ] Install and configure ReactFlow
-- [ ] Custom node components
-- [ ] Workflow canvas component
-- [ ] Node configuration UI
-- [ ] Workflow save/load functionality
-- [ ] Workflow validation logic
-- [ ] Workflow execution engine
-- [ ] Progress tracking UI
-- [ ] Tests for workflow system
-
-**Directories needed:**
-- `src/components/workflow/`
-- `src/app/(protected)/workflows/builder/`
-- `src/app/(protected)/workflows/executions/`
-- `src/lib/workflow/`
-
-### 5. shadcn/ui Components
-**Status:** Configuration ready, components need installation
-- [ ] Install specific components as needed:
-  - Button, Card, Dialog
-  - Input, Select, Textarea
-  - Avatar, Separator, Toast
-  - Dropdown Menu
-- [ ] Create layout components
-- [ ] Create specialized UI components
-
-### 6. Additional Documentation
-- [ ] ARCHITECTURE.md - System architecture overview
-- [ ] AUTH_SETUP.md - Detailed Entra ID setup guide
-- [ ] WORKFLOW_GUIDE.md - How to use workflows
+### 2. Workflow Save/Load
+**Status:** Database models exist, UI not wired up
+- [ ] Connect WorkflowBuilder to `Workflow` / `WorkflowNode` DB models
+- [ ] Save/load workflows from the API
+- [ ] Workflow execution engine using `WorkflowExecution` / `WorkflowStep` models
 
 ## 🚀 Getting Started
 
 ### Step 1: Install Dependencies
 
-All lint errors you're seeing are expected - they'll resolve after installing dependencies:
-
 ```bash
-cd /Users/mike/Documents/Github/nextjs-boiler-plate
 npm install
 ```
 
-This will install all dependencies including:
-- Next.js, React, TypeScript
-- Tailwind CSS and PostCSS
-- Prisma and PostgreSQL client
-- OpenTelemetry packages
-- Testing frameworks (Vitest, Playwright, MSW)
-- All dev dependencies
-
 ### Step 2: Start Infrastructure
-
-Start the observability stack:
 
 ```bash
 npm run infra:up
 ```
 
-Wait ~30 seconds for all services to become healthy. Access:
+Wait ~30 seconds for all services to become healthy:
 - Jaeger: http://localhost:16686
 - Prometheus: http://localhost:9090
 - Grafana: http://localhost:3001 (admin/admin)
 
 ### Step 3: Configure Environment
 
-Copy and configure environment variables:
-
 ```bash
 cp .env.example .env
 ```
 
-Edit `.env` to add your database connection and other settings.
+Set at minimum: `DATABASE_URL`, `OPENAI_API_KEY`, `NEXTAUTH_SECRET`.
 
 ### Step 4: Initialize Database
 
@@ -255,22 +228,7 @@ npm run db:migrate
 npm run dev
 ```
 
-Open http://localhost:3000
-
-### Step 6: Verify Setup
-
-Check that everything works:
-
-```bash
-# Run tests
-npm test
-
-# Check linting
-npm run lint
-
-# Verify infrastructure
-docker ps  # Should show 6 running containers
-```
+Open http://localhost:3000 — the homepage is a dev navigation hub with links to all features.
 
 ## 📝 Development Workflow
 
@@ -384,10 +342,9 @@ Your boilerplate will be complete when:
 - Review TDD.md for testing guidance
 - Check OPENTELEMETRY.md for observability patterns
 - See infra/README.md for infrastructure troubleshooting
-- All configuration is in place - just needs implementation!
+- All core features are implemented — see the ✅ sections above for what's built
 
 ---
 
-**Current Status:** Foundation Complete (7/12 major components)  
-**Ready for:** Feature implementation following TDD principles  
-**Estimated to complete:** 3-5 weeks with consistent development
+**Current Status:** Core features complete — Chat, Workflow Builder, Approval Queue all implemented and tested (164+ passing unit tests)  
+**Pending:** Microsoft Entra ID auth wiring, Workflow save/load persistence

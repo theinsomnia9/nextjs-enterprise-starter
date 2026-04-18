@@ -43,7 +43,7 @@ describe('ChatHistory', () => {
     const chatButtons = screen.getAllByRole('button')
     const chat1Button = chatButtons.find((btn) => btn.textContent?.includes('Chat 1'))
 
-    expect(chat1Button).toHaveClass('bg-blue-500')
+    expect(chat1Button).toHaveClass('bg-primary')
   })
 
   it('should call onSelectChat when a chat is clicked', async () => {
@@ -115,7 +115,7 @@ describe('ChatHistory', () => {
     })
 
     const newChatIndicator = screen.getByText('New Conversation').closest('button')
-    expect(newChatIndicator).toHaveClass('bg-blue-500')
+    expect(newChatIndicator).toHaveClass('bg-primary')
   })
 
   it('should not show new chat indicator when hasActiveChat is false', async () => {

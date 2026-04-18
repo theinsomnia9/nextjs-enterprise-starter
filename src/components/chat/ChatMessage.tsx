@@ -1,5 +1,6 @@
 'use client'
 
+import ReactMarkdown from 'react-markdown'
 import { cn } from '@/lib/utils'
 
 interface ChatMessageProps {
@@ -12,37 +13,66 @@ export function ChatMessage({ role, content, isStreaming = false }: ChatMessageP
   const isUser = role === 'USER'
 
   return (
-    <div
-      className={cn(
-        'flex w-full gap-3 rounded-lg p-4',
-        isUser ? 'bg-blue-50 dark:bg-blue-900/20' : 'bg-gray-50 dark:bg-gray-800'
-      )}
-    >
+    <div className={cn('flex w-full gap-3 rounded-lg p-4', isUser ? 'bg-primary/5' : 'bg-muted')}>
       <div className="flex-shrink-0">
         <div
           className={cn(
             'flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold',
-            isUser
-              ? 'bg-blue-500 text-white'
-              : 'bg-gray-300 text-gray-700 dark:bg-gray-600 dark:text-gray-200'
+            isUser ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'
           )}
         >
           {isUser ? 'U' : 'A'}
         </div>
       </div>
-      <div className="flex-1">
-        <div className="mb-1 text-sm font-semibold text-gray-900 dark:text-gray-100">
-          {isUser ? 'You' : 'Assistant'}
-        </div>
-        <div className="whitespace-pre-wrap text-sm text-gray-800 dark:text-gray-200">
-          {content}
-          {isStreaming && (
-            <span
-              data-testid="streaming-indicator"
-              className="ml-1 inline-block h-4 w-1 animate-pulse bg-gray-600 dark:bg-gray-400"
-            />
-          )}
-        </div>
+      <div className="min-w-0 flex-1">
+        <div className="mb-1 text-sm font-semibold">{isUser ? 'You' : 'Assistant'}</div>
+        {isUser ? (
+          <div className="whitespace-pre-wrap text-sm text-foreground/90">{content}</div>
+        ) : (
+          <div className="prose prose-sm dark:prose-invert max-w-none text-sm text-foreground/90">
+            <ReactMarkdown
+              components={{
+                a: ({ ...props }) => (
+                  <a
+                    {...props}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary underline hover:text-primary/80"
+                  />
+                ),
+                ul: ({ ...props }) => <ul {...props} className="my-2 list-disc space-y-1 pl-4" />,
+                ol: ({ ...props }) => (
+                  <ol {...props} className="my-2 list-decimal space-y-1 pl-4" />
+                ),
+                li: ({ ...props }) => <li {...props} className="leading-relaxed" />,
+                p: ({ ...props }) => <p {...props} className="my-2 leading-relaxed" />,
+                strong: ({ ...props }) => (
+                  <strong {...props} className="font-semibold text-foreground" />
+                ),
+                h1: ({ ...props }) => <h1 {...props} className="my-3 text-lg font-bold" />,
+                h2: ({ ...props }) => <h2 {...props} className="my-2 text-base font-semibold" />,
+                h3: ({ ...props }) => <h3 {...props} className="my-2 text-sm font-semibold" />,
+                code: ({ ...props }) => (
+                  <code
+                    {...props}
+                    className="rounded bg-secondary/50 px-1.5 py-0.5 font-mono text-xs"
+                  />
+                ),
+                pre: ({ ...props }) => (
+                  <pre {...props} className="my-2 overflow-x-auto rounded-lg bg-secondary/30 p-3" />
+                ),
+              }}
+            >
+              {content}
+            </ReactMarkdown>
+            {isStreaming && (
+              <span
+                data-testid="streaming-indicator"
+                className="ml-1 inline-block h-4 w-1 animate-pulse bg-muted-foreground"
+              />
+            )}
+          </div>
+        )}
       </div>
     </div>
   )

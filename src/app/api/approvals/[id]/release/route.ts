@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { createSpan } from '@/lib/telemetry/tracing'
-import { triggerApprovalEvent } from '@/lib/approvals/pusherServer'
+import { triggerApprovalEvent } from '@/lib/approvals/sseServer'
 import { z } from 'zod'
 
 const releaseSchema = z.object({

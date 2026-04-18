@@ -1,33 +1,61 @@
+import Link from 'next/link'
+
+const NAV_ROUTES = [
+  {
+    id: 'chat',
+    href: '/chat',
+    label: 'Chat',
+    description: 'Real-time chat interface with Server-Sent Events and message history.',
+    badge: 'SSE',
+  },
+  {
+    id: 'builder',
+    href: '/builder',
+    label: 'Workflow Builder',
+    description: 'Visual node-based workflow builder powered by ReactFlow.',
+    badge: 'ReactFlow',
+  },
+  {
+    id: 'approvals',
+    href: '/approvals',
+    label: 'Approvals',
+    description: 'Approval queue dashboard for reviewing and actioning workflow requests.',
+    badge: 'Queue',
+  },
+]
+
 export default function Home() {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-24">
-      <div className="w-full max-w-5xl items-center justify-between font-mono text-sm">
-        <h1 className="mb-8 text-4xl font-bold">Enterprise Boilerplate</h1>
-        <p className="mb-4 text-lg">Production-ready Next.js application with:</p>
-        <ul className="list-inside list-disc space-y-2 text-base">
-          <li>Microsoft Entra ID Authentication</li>
-          <li>OpenTelemetry Observability (Jaeger + Prometheus + Grafana)</li>
-          <li>Real-time Chat with Server-Sent Events</li>
-          <li>Visual Workflow Builder with ReactFlow</li>
-          <li>PostgreSQL with Prisma ORM</li>
-          <li>Comprehensive Testing (Vitest + Playwright + MSW)</li>
-          <li>Test-Driven Development (80%+ coverage)</li>
-        </ul>
-        <div className="mt-8 space-y-4">
-          <div className="rounded-lg bg-secondary p-4">
-            <p className="text-sm text-muted-foreground">
-              Get started by running <code className="rounded bg-muted px-2 py-1">npm run dev</code>
-            </p>
-          </div>
-          <div className="rounded-lg border border-primary/20 bg-primary/10 p-4">
-            <h3 className="mb-2 font-semibold">Try the Workflow Builder</h3>
-            <a
-              href="/builder"
-              className="inline-block rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground transition-colors hover:bg-primary/90"
+    <main className="flex min-h-screen flex-col items-center justify-center p-6 md:p-24">
+      <div className="w-full max-w-3xl">
+        <div className="mb-10">
+          <h1 className="mb-2 text-4xl font-bold tracking-tight">Dev Navigation</h1>
+          <p className="text-lg text-muted-foreground">
+            Navigate across features during development. Click any card to open the route.
+          </p>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {NAV_ROUTES.map((route) => (
+            <Link
+              key={route.id}
+              href={route.href}
+              data-testid={`nav-card-${route.id}`}
+              className="group flex flex-col gap-3 rounded-xl border border-border bg-card p-5 shadow-sm transition-all hover:border-primary/50 hover:shadow-md"
             >
-              Open Builder
-            </a>
-          </div>
+              <div className="flex items-center justify-between">
+                <span className="text-lg font-semibold group-hover:text-primary">
+                  {route.label}
+                </span>
+                <span className="rounded-full bg-secondary px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                  {route.badge}
+                </span>
+              </div>
+              <p className="text-sm text-muted-foreground">{route.description}</p>
+              <span className="mt-auto text-xs font-medium text-primary opacity-0 transition-opacity group-hover:opacity-100">
+                Open →
+              </span>
+            </Link>
+          ))}
         </div>
       </div>
     </main>
