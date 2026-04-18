@@ -4,6 +4,7 @@ import { createSpan } from '@/lib/telemetry/tracing'
 import { getAgent } from '@/lib/agent/agent'
 import { resolveChat, saveAssistantMessage } from '@/lib/chat/helpers'
 import { HumanMessage, AIMessage, SystemMessage } from '@langchain/core/messages'
+import { SSE_HEADERS } from '@/lib/sse/eventTypes'
 
 const requestSchema = z.object({
   message: z.string().min(1, 'Message is required'),
@@ -11,11 +12,6 @@ const requestSchema = z.object({
   threadId: z.string().optional(),
 })
 
-const SSE_HEADERS = {
-  'Content-Type': 'text/event-stream',
-  'Cache-Control': 'no-cache',
-  Connection: 'keep-alive',
-} as const
 
 function toAgentMessage(role: string, content: string) {
   switch (role) {

@@ -18,6 +18,8 @@ vi.mock('@/components/approval/ApprovalPipeline', () => ({
   ),
 }))
 
+const mockCounts = { PENDING: 1, REVIEWING: 1, APPROVED: 0, REJECTED: 0 }
+
 const mockRequests = [
   {
     id: 'req-1',
@@ -51,19 +53,19 @@ describe('QueueDashboard — clickable rows', () => {
   })
 
   it('each request row has a data-testid for E2E', () => {
-    render(<QueueDashboard requests={mockRequests} currentUserId="user-3" />)
+    render(<QueueDashboard requests={mockRequests} counts={mockCounts} currentUserId="user-3" />)
     expect(screen.getByTestId('queue-item-req-1')).toBeDefined()
     expect(screen.getByTestId('queue-item-req-2')).toBeDefined()
   })
 
   it('clicking a request row navigates to /approvals/[id]', () => {
-    render(<QueueDashboard requests={mockRequests} currentUserId="user-3" />)
+    render(<QueueDashboard requests={mockRequests} counts={mockCounts} currentUserId="user-3" />)
     fireEvent.click(screen.getByTestId('queue-item-req-1'))
     expect(mockPush).toHaveBeenCalledWith('/approvals/req-1')
   })
 
   it('clicking a second request row navigates to its own route', () => {
-    render(<QueueDashboard requests={mockRequests} currentUserId="user-3" />)
+    render(<QueueDashboard requests={mockRequests} counts={mockCounts} currentUserId="user-3" />)
     fireEvent.click(screen.getByTestId('queue-item-req-2'))
     expect(mockPush).toHaveBeenCalledWith('/approvals/req-2')
   })
@@ -72,6 +74,7 @@ describe('QueueDashboard — clickable rows', () => {
     render(
       <QueueDashboard
         requests={mockRequests}
+        counts={mockCounts}
         currentUserId="user-3"
         onLock={vi.fn()}
         onApprove={vi.fn()}

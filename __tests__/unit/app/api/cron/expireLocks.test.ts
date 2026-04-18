@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 vi.mock('@/lib/prisma', () => ({
   prisma: {
     approvalRequest: {
+      findMany: vi.fn().mockResolvedValue([{ id: 'lock-1' }, { id: 'lock-2' }, { id: 'lock-3' }]),
       updateMany: vi.fn().mockResolvedValue({ count: 3 }),
     },
   },
@@ -55,7 +56,7 @@ describe('GET /api/cron/expire-locks', () => {
     await GET(req)
     expect(prisma.approvalRequest.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: expect.objectContaining({ status: 'REVIEWING' }),
+        where: expect.objectContaining({ id: { in: ['lock-1', 'lock-2', 'lock-3'] } }),
         data: expect.objectContaining({ status: 'PENDING', assigneeId: null }),
       })
     )

@@ -5,13 +5,6 @@ export interface ChatContext {
   previousMessages: Array<{ role: string; content: string }>
 }
 
-/**
- * Resolves a chat session: creates a new one when chatId is null, verifies an
- * existing one otherwise. Persists the user message and returns the chat id
- * plus the last 20 messages for context.
- *
- * Returns null when the requested chatId does not exist (callers should 404).
- */
 export async function resolveChat(
   chatId: string | null,
   userMessage: string

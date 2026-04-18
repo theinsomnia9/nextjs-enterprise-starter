@@ -151,6 +151,17 @@ export class ApprovalService {
     })
   }
 
+  async getPriorityConfig(category: string): Promise<PriorityConfigValues> {
+    const config = await this.repo.getPriorityConfig(category as never)
+    if (!config) return DEFAULT_PRIORITY_CONFIG
+    return {
+      baseWeight: config.baseWeight,
+      agingFactor: config.agingFactor,
+      slaHours: config.slaHours,
+      lockTimeoutMinutes: config.lockTimeoutMinutes,
+    }
+  }
+
   async expireLocks() {
     return this.repo.expireLocks(new Date())
   }
