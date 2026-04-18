@@ -3,33 +3,57 @@ import { test, expect, type Page } from '@playwright/test'
 test.describe('SSE – approval queue real-time updates', () => {
   // ─── Endpoint health ──────────────────────────────────────────────
 
-  test('SSE endpoint returns correct streaming headers', async ({ request }) => {
-    // Abort the stream after receiving headers – we only care about the response meta
-    const response = await request.get('/api/sse/approvals', {
-      headers: { Accept: 'text/event-stream' },
-      timeout: 5000,
+  test('SSE endpoint returns correct streaming headers', async ({ page }) => {
+    // Navigate first so relative URLs resolve correctly in page.evaluate
+    await page.goto('/approvals')
+    await page.waitForLoadState('load')
+
+    // Use a page-level fetch with AbortController so we get headers
+    // immediately without waiting for the stream to close.
+    const result = await page.evaluate(async () => {
+      const controller = new AbortController()
+      let response: Response | null = null
+      try {
+        response = await fetch('/api/sse/approvals', {
+          headers: { Accept: 'text/event-stream' },
+          signal: controller.signal,
+        })
+      } catch (e: unknown) {
+        if ((e as Error).name !== 'AbortError') throw e
+      } finally {
+        controller.abort()
+      }
+      if (!response) return null
+      const headers = Object.fromEntries(response.headers.entries())
+      return { status: response.status, headers }
     })
 
-    expect(response.status()).toBe(200)
-    expect(response.headers()['content-type']).toContain('text/event-stream')
-    expect(response.headers()['cache-control']).toContain('no-cache')
+    expect(result).not.toBeNull()
+    expect(result!.status).toBe(200)
+    expect(result!.headers['content-type']).toContain('text/event-stream')
+    expect(result!.headers['cache-control']).toContain('no-cache')
   })
 
   test('SSE endpoint sends initial "connected" event', async ({ page }) => {
-    const sseMessages: string[] = []
-
-    await page.route('/api/sse/approvals', async (route) => {
-      const response = await route.fetch()
-      const body = await response.text()
-      sseMessages.push(body)
-      await route.fulfill({ response })
-    })
-
     await page.goto('/approvals')
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('load')
 
-    // Check that at least one intercepted SSE message contains the connected event
-    const hasConnectedEvent = sseMessages.some((msg) => msg.includes('event: connected'))
+    // Open a new EventSource in the page context and wait for the "connected" event
+    const hasConnectedEvent = await page.evaluate(
+      () =>
+        new Promise<boolean>((resolve) => {
+          const es = new EventSource('/api/sse/approvals')
+          es.addEventListener('connected', () => {
+            es.close()
+            resolve(true)
+          })
+          setTimeout(() => {
+            es.close()
+            resolve(false)
+          }, 5000)
+        })
+    )
+
     expect(hasConnectedEvent).toBe(true)
   })
 
@@ -37,7 +61,7 @@ test.describe('SSE – approval queue real-time updates', () => {
 
   test('PENDING counter decrements after locking an item', async ({ page }) => {
     await page.goto('/approvals')
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('load')
 
     const pendingBefore = await getPipelineCount(page, 'PENDING')
     const reviewingBefore = await getPipelineCount(page, 'REVIEWING')
@@ -73,7 +97,7 @@ test.describe('SSE – approval queue real-time updates', () => {
 
   test('REVIEWING counter decrements after approving a locked item', async ({ page }) => {
     await page.goto('/approvals')
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('load')
 
     // First lock an item so we can approve it
     const lockButton = page.locator('button', { hasText: 'Lock' }).first()
@@ -82,7 +106,7 @@ test.describe('SSE – approval queue real-time updates', () => {
       return
     }
     await lockButton.click()
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('load')
 
     const reviewingBefore = await getPipelineCount(page, 'REVIEWING')
     const approvedBefore = await getPipelineCount(page, 'APPROVED')
@@ -93,7 +117,7 @@ test.describe('SSE – approval queue real-time updates', () => {
       return
     }
     await approveButton.click()
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('load')
 
     const reviewingAfter = await getPipelineCount(page, 'REVIEWING')
     const approvedAfter = await getPipelineCount(page, 'APPROVED')
@@ -114,9 +138,9 @@ test.describe('SSE – approval queue real-time updates', () => {
 
     try {
       await page1.goto('/approvals')
-      await page1.waitForLoadState('networkidle')
+      await page1.waitForLoadState('load')
       await page2.goto('/approvals')
-      await page2.waitForLoadState('networkidle')
+      await page2.waitForLoadState('load')
 
       const lockButton = page1.locator('button', { hasText: 'Lock' }).first()
       if ((await lockButton.count()) === 0) {
