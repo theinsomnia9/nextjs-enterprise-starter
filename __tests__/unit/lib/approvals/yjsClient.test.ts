@@ -1,23 +1,24 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('yjs', () => ({
-  Doc: vi.fn().mockImplementation(() => ({
-    getMap: vi.fn().mockReturnValue(new Map()),
-    destroy: vi.fn(),
-  })),
+  Doc: vi.fn(function () {
+    return { getMap: vi.fn().mockReturnValue(new Map()), destroy: vi.fn() }
+  }),
 }))
 
 vi.mock('y-websocket', () => ({
-  WebsocketProvider: vi.fn().mockImplementation(() => ({
-    awareness: {
-      setLocalStateField: vi.fn(),
-      getStates: vi.fn().mockReturnValue(new Map()),
-      on: vi.fn(),
-      off: vi.fn(),
-    },
-    destroy: vi.fn(),
-    disconnect: vi.fn(),
-  })),
+  WebsocketProvider: vi.fn(function () {
+    return {
+      awareness: {
+        setLocalStateField: vi.fn(),
+        getStates: vi.fn().mockReturnValue(new Map()),
+        on: vi.fn(),
+        off: vi.fn(),
+      },
+      destroy: vi.fn(),
+      disconnect: vi.fn(),
+    }
+  }),
 }))
 
 describe('createYjsRoom', () => {

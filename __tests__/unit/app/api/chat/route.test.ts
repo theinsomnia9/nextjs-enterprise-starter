@@ -2,9 +2,9 @@ import { describe, it, expect, vi } from 'vitest'
 import { z } from 'zod'
 
 vi.mock('openai', () => ({
-  default: vi.fn().mockImplementation(() => ({
-    chat: { completions: { create: vi.fn() } },
-  })),
+  default: vi.fn(function () {
+    return { chat: { completions: { create: vi.fn() } } }
+  }),
 }))
 
 vi.mock('@/lib/prisma', () => ({
