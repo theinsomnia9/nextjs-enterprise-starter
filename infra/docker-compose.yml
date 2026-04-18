@@ -109,24 +109,6 @@ services:
       timeout: 5s
       retries: 5
 
-  soketi:
-    image: quay.io/soketi/soketi:latest-16-alpine
-    container_name: soketi
-    ports:
-      - '6001:6001'
-      - '9601:9601'
-    environment:
-      SOKETI_DEBUG: '0'
-      SOKETI_METRICS_SERVER_PORT: '9601'
-      SOKETI_DEFAULT_APP_ID: '${PUSHER_APP_ID:-app-id}'
-      SOKETI_DEFAULT_APP_KEY: '${PUSHER_APP_KEY:-app-key}'
-      SOKETI_DEFAULT_APP_SECRET: '${PUSHER_APP_SECRET:-app-secret}'
-    healthcheck:
-      test: ['CMD-SHELL', 'wget -qO- http://localhost:9601/ 2>/dev/null | head -1 || exit 1']
-      interval: 10s
-      timeout: 5s
-      retries: 10
-
   y-websocket:
     image: node:20-alpine
     container_name: y-websocket
