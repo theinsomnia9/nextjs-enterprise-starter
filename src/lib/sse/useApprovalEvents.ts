@@ -13,21 +13,31 @@ interface UseApprovalEventsOptions {
 export function useApprovalEvents(options: UseApprovalEventsOptions) {
   const { onEvent, onRefresh, onError, events = REFRESH_EVENTS } = options
   const eventSourceRef = useRef<EventSource | null>(null)
-  // Stable refs to avoid stale closures in cleanup
-  const handlersRef = useRef<Map<SSEEventType, (e: MessageEvent) => void>>(new Map())
+  const handlersRef = useRef<Map<string, (e: MessageEvent) => void>>(new Map())
+
+  // Stable refs so connect/disconnect have no callback deps and never change identity
+  const onEventRef = useRef(onEvent)
+  const onRefreshRef = useRef(onRefresh)
+  const onErrorRef = useRef(onError)
+  const eventsRef = useRef(events)
+
+  useEffect(() => { onEventRef.current = onEvent }, [onEvent])
+  useEffect(() => { onRefreshRef.current = onRefresh }, [onRefresh])
+  useEffect(() => { onErrorRef.current = onError }, [onError])
+  useEffect(() => { eventsRef.current = events }, [events])
 
   const connect = useCallback(() => {
-    if (eventSourceRef.current?.readyState === EventSource.OPEN) return
+    if (eventSourceRef.current) return
 
     const eventSource = new EventSource('/api/sse/approvals')
     eventSourceRef.current = eventSource
 
-    events.forEach((eventType) => {
+    eventsRef.current.forEach((eventType) => {
       const handler = (event: MessageEvent) => {
         try {
           const data = JSON.parse(event.data as string)
-          onEvent?.(eventType, data)
-          if (REFRESH_EVENTS.includes(eventType)) onRefresh?.()
+          onEventRef.current?.(eventType, data)
+          if (REFRESH_EVENTS.includes(eventType)) onRefreshRef.current?.()
         } catch {
           // ignore malformed events
         }
@@ -39,16 +49,16 @@ export function useApprovalEvents(options: UseApprovalEventsOptions) {
     const messageHandler = (event: MessageEvent) => {
       try {
         const parsed = JSON.parse(event.data as string)
-        if (parsed.event && REFRESH_EVENTS.includes(parsed.event)) onRefresh?.()
+        if (parsed.event && REFRESH_EVENTS.includes(parsed.event)) onRefreshRef.current?.()
       } catch {
         // ignore malformed messages
       }
     }
-    handlersRef.current.set('message' as SSEEventType, messageHandler)
+    handlersRef.current.set('message', messageHandler)
     eventSource.addEventListener('message', messageHandler)
 
-    if (onError) eventSource.addEventListener('error', onError)
-  }, [events, onEvent, onRefresh, onError])
+    eventSource.addEventListener('error', () => onErrorRef.current?.())
+  }, [])
 
   const disconnect = useCallback(() => {
     const es = eventSourceRef.current
@@ -58,11 +68,9 @@ export function useApprovalEvents(options: UseApprovalEventsOptions) {
       es.removeEventListener(eventType, handler)
     })
     handlersRef.current.clear()
-
-    if (onError) es.removeEventListener('error', onError)
     es.close()
     eventSourceRef.current = null
-  }, [onError])
+  }, [])
 
   useEffect(() => {
     connect()

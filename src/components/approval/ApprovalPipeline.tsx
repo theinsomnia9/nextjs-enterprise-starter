@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useApprovalEvents } from '@/lib/sse/useApprovalEvents'
 
 export type StatusCounts = {
   PENDING: number
@@ -23,16 +24,6 @@ const STAGE_COLORS: Record<keyof StatusCounts, string> = {
   REJECTED: 'hsl(var(--status-rejected))',
 }
 
-// List of events that trigger a refresh
-const REFRESH_EVENTS = [
-  'request:submitted',
-  'request:locked',
-  'request:unlocked',
-  'request:approved',
-  'request:rejected',
-  'queue:counts',
-]
-
 export function ApprovalPipeline({ initialCounts, onRefresh }: ApprovalPipelineProps) {
   const [counts, setCounts] = useState<StatusCounts>(initialCounts)
 
@@ -40,54 +31,7 @@ export function ApprovalPipeline({ initialCounts, onRefresh }: ApprovalPipelineP
     setCounts(initialCounts)
   }, [initialCounts])
 
-  useEffect(() => {
-    // Use Server-Sent Events (SSE) instead of WebSockets
-    const eventSource = new EventSource('/api/sse/approvals')
-
-    // Handle specific event types from server
-    const handleApprovalEvent = (event: MessageEvent) => {
-      try {
-        JSON.parse(event.data)
-        if (REFRESH_EVENTS.includes(event.type as (typeof REFRESH_EVENTS)[number])) {
-          onRefresh?.()
-        }
-      } catch {
-        // Ignore malformed events
-      }
-    }
-
-    const handleMessage = (event: MessageEvent) => {
-      try {
-        const parsed = JSON.parse(event.data)
-        if (parsed.event && REFRESH_EVENTS.includes(parsed.event)) {
-          onRefresh?.()
-        }
-      } catch {
-        // Ignore malformed messages or ping events
-      }
-    }
-
-    const handleError = () => {
-      // EventSource auto-reconnects on error
-    }
-
-    // Listen for specific approval events
-    REFRESH_EVENTS.forEach((eventName) => {
-      eventSource.addEventListener(eventName, handleApprovalEvent)
-    })
-    // Also listen for generic messages as fallback
-    eventSource.addEventListener('message', handleMessage)
-    eventSource.addEventListener('error', handleError)
-
-    return () => {
-      REFRESH_EVENTS.forEach((eventName) => {
-        eventSource.removeEventListener(eventName, handleApprovalEvent)
-      })
-      eventSource.removeEventListener('message', handleMessage)
-      eventSource.removeEventListener('error', handleError)
-      eventSource.close()
-    }
-  }, [onRefresh])
+  useApprovalEvents({ onRefresh })
 
   return (
     <div data-testid="approval-pipeline" className="flex w-full gap-3">

@@ -1,6 +1,5 @@
 'use client'
 
-import { useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { ApprovalPipeline, type StatusCounts } from './ApprovalPipeline'
 import { CATEGORY_COLORS } from '@/lib/approvals/constants'
@@ -21,7 +20,7 @@ export type QueueRequest = {
 
 interface QueueDashboardProps {
   requests: QueueRequest[]
-  counts?: StatusCounts
+  counts: StatusCounts
   currentUserId: string
   onRefresh?: () => void
   onLock?: (requestId: string) => void
@@ -38,7 +37,7 @@ function isLockActive(lockExpiresAt: string | null): boolean {
 
 export function QueueDashboard({
   requests,
-  counts: countsProp,
+  counts,
   currentUserId,
   onRefresh,
   onLock,
@@ -47,16 +46,6 @@ export function QueueDashboard({
   onReject,
 }: QueueDashboardProps) {
   const router = useRouter()
-
-  const derivedCounts = useMemo<StatusCounts>(() => {
-    const c: StatusCounts = { PENDING: 0, REVIEWING: 0, APPROVED: 0, REJECTED: 0 }
-    requests.forEach((r) => {
-      if (r.status in c) c[r.status as keyof StatusCounts]++
-    })
-    return c
-  }, [requests])
-
-  const counts = countsProp ?? derivedCounts
 
   return (
     <div data-testid="queue-dashboard" className="flex flex-col gap-6 p-4">

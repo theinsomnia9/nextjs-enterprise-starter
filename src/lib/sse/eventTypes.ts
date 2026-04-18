@@ -1,3 +1,9 @@
+export const SSE_HEADERS = {
+  'Content-Type': 'text/event-stream',
+  'Cache-Control': 'no-cache',
+  Connection: 'keep-alive',
+} as const
+
 export const SSE_EVENTS = {
   REQUEST_SUBMITTED: 'request:submitted',
   REQUEST_LOCKED: 'request:locked',

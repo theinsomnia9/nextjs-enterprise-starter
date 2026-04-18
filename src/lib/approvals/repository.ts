@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma'
-import type { ApprovalRequest, PriorityConfig, Prisma } from '@prisma/client'
+import type { ApprovalCategory, ApprovalRequest, PriorityConfig, Prisma } from '@prisma/client'
 
 type UserSelect = { id: string; name: string | null; email: string | null }
 type WithRequester = ApprovalRequest & { requester: UserSelect }
@@ -16,6 +16,7 @@ export interface IApprovalRepository {
   reject(id: string, rejectorId: string, reason: string): Promise<WithRequester>
   expireLocks(before: Date): Promise<{ count: number; ids: string[] }>
   getAllPriorityConfigs(): Promise<PriorityConfig[]>
+  getPriorityConfig(category: ApprovalCategory): Promise<PriorityConfig | null>
 }
 
 const userSelect = { select: { id: true, name: true, email: true } } as const
@@ -108,6 +109,10 @@ export class ApprovalRepository implements IApprovalRepository {
 
   async getAllPriorityConfigs() {
     return prisma.priorityConfig.findMany()
+  }
+
+  async getPriorityConfig(category: ApprovalCategory) {
+    return prisma.priorityConfig.findUnique({ where: { category } })
   }
 }
 

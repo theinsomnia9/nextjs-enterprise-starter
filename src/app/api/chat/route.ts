@@ -3,6 +3,7 @@ import OpenAI from 'openai'
 import { z } from 'zod'
 import { createSpan } from '@/lib/telemetry/tracing'
 import { resolveChat, saveAssistantMessage } from '@/lib/chat/helpers'
+import { SSE_HEADERS } from '@/lib/sse/eventTypes'
 
 const requestSchema = z.object({
   message: z.string().min(1, 'Message is required'),
@@ -11,11 +12,6 @@ const requestSchema = z.object({
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
-const SSE_HEADERS = {
-  'Content-Type': 'text/event-stream',
-  'Cache-Control': 'no-cache',
-  Connection: 'keep-alive',
-} as const
 
 export async function POST(req: NextRequest) {
   return await createSpan('http.chat.create', async (span) => {
