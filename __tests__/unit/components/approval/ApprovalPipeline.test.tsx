@@ -1,58 +1,37 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '../../../setup/test-utils'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { render, screen, act } from '../../../setup/test-utils'
 import { ApprovalPipeline } from '@/components/approval/ApprovalPipeline'
 
-vi.mock('reactflow', async () => {
-  const React = await import('react')
-  const MockFlow = ({ children }: { children: React.ReactNode }) =>
-    React.createElement('div', { 'data-testid': 'react-flow' }, children)
-  return {
-    default: MockFlow,
-    Background: () => React.createElement('div', { 'data-testid': 'background' }),
-    Controls: () => React.createElement('div', { 'data-testid': 'controls' }),
-    Handle: ({ type }: { type: string }) =>
-      React.createElement('div', { 'data-testid': `handle-${type}` }),
-    Position: { Top: 'top', Bottom: 'bottom', Left: 'left', Right: 'right' },
-    BackgroundVariant: { Dots: 'dots' },
-  }
-})
-
-vi.mock('pusher-js', () => ({
-  default: vi.fn().mockImplementation(() => ({
-    subscribe: vi.fn().mockReturnValue({
-      bind: vi.fn(),
-      unbind: vi.fn(),
-      unbind_all: vi.fn(),
-    }),
-    unsubscribe: vi.fn(),
-    disconnect: vi.fn(),
-  })),
-}))
-
-vi.mock('@/lib/approvals/yjsClient', () => ({
-  createYjsRoom: vi.fn().mockReturnValue({
-    doc: {},
-    nodesMap: new Map(),
-    edgesMap: new Map(),
-    awareness: {
-      setLocalStateField: vi.fn(),
-      on: vi.fn(),
-      off: vi.fn(),
-      getStates: vi.fn().mockReturnValue(new Map()),
-    },
-    provider: { disconnect: vi.fn(), destroy: vi.fn() },
-  }),
-  destroyYjsRoom: vi.fn(),
-}))
-
 const mockCounts = { PENDING: 3, REVIEWING: 1, APPROVED: 12, REJECTED: 2 }
+
+type MockEventSourceInstance = InstanceType<typeof EventSource> & {
+  simulateEvent: (type: string, data: unknown) => void
+  simulateMessage: (data: string) => void
+}
+
+let lastEventSource: MockEventSourceInstance | null = null
 
 describe('ApprovalPipeline', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    lastEventSource = null
+
+    const RealMockES = global.EventSource
+    vi.stubGlobal(
+      'EventSource',
+      vi.fn().mockImplementation((url: string) => {
+        const instance = new RealMockES(url) as MockEventSourceInstance
+        lastEventSource = instance
+        return instance
+      })
+    )
   })
 
-  it('renders the pipeline container (ReactFlow loaded dynamically)', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('renders the pipeline container', () => {
     render(<ApprovalPipeline initialCounts={mockCounts} />)
     expect(screen.getByTestId('approval-pipeline')).toBeDefined()
   })
@@ -65,19 +44,75 @@ describe('ApprovalPipeline', () => {
     expect(screen.getByText('REJECTED')).toBeDefined()
   })
 
-  it('renders initial count badges (pipeline container is present)', () => {
+  it('displays the correct count values from initialCounts', () => {
     render(<ApprovalPipeline initialCounts={mockCounts} />)
-    expect(screen.getByTestId('approval-pipeline')).toBeDefined()
+    expect(screen.getByText('3')).toBeDefined()
+    expect(screen.getByText('1')).toBeDefined()
+    expect(screen.getByText('12')).toBeDefined()
+    expect(screen.getByText('2')).toBeDefined()
   })
 
-  it('renders with data-testid for E2E targeting', () => {
+  it('connects to /api/sse/approvals on mount', () => {
     render(<ApprovalPipeline initialCounts={mockCounts} />)
-    expect(screen.getByTestId('approval-pipeline')).toBeDefined()
+    expect(global.EventSource).toHaveBeenCalledWith('/api/sse/approvals')
   })
 
-  it('accepts an onNodeClick callback prop', () => {
-    const onNodeClick = vi.fn()
-    render(<ApprovalPipeline initialCounts={mockCounts} onNodeClick={onNodeClick} />)
-    expect(screen.getByTestId('approval-pipeline')).toBeDefined()
+  it('closes the EventSource on unmount', () => {
+    const { unmount } = render(<ApprovalPipeline initialCounts={mockCounts} />)
+    expect(lastEventSource).not.toBeNull()
+    const closeSpy = vi.spyOn(lastEventSource!, 'close')
+    unmount()
+    expect(closeSpy).toHaveBeenCalled()
+  })
+
+  it.each([
+    'request:submitted',
+    'request:locked',
+    'request:unlocked',
+    'request:approved',
+    'request:rejected',
+    'queue:counts',
+  ])('calls onRefresh when named event "%s" is received', async (eventName) => {
+    const onRefresh = vi.fn()
+    render(<ApprovalPipeline initialCounts={mockCounts} onRefresh={onRefresh} />)
+
+    expect(lastEventSource).not.toBeNull()
+
+    await act(async () => {
+      lastEventSource!.simulateEvent(eventName, { requestId: 'test-id' })
+    })
+
+    expect(onRefresh).toHaveBeenCalledTimes(1)
+  })
+
+  it('does NOT call onRefresh for unknown event types', async () => {
+    const onRefresh = vi.fn()
+    render(<ApprovalPipeline initialCounts={mockCounts} onRefresh={onRefresh} />)
+
+    await act(async () => {
+      lastEventSource!.simulateEvent('some:unknown:event', { requestId: 'test-id' })
+    })
+
+    expect(onRefresh).not.toHaveBeenCalled()
+  })
+
+  it('updates displayed counts when initialCounts prop changes', () => {
+    const { rerender } = render(<ApprovalPipeline initialCounts={mockCounts} />)
+    expect(screen.getByText('3')).toBeDefined()
+
+    rerender(
+      <ApprovalPipeline initialCounts={{ PENDING: 99, REVIEWING: 1, APPROVED: 12, REJECTED: 2 }} />
+    )
+    expect(screen.getByText('99')).toBeDefined()
+  })
+
+  it('does not crash when onRefresh is not provided and an SSE event fires', async () => {
+    render(<ApprovalPipeline initialCounts={mockCounts} />)
+
+    await expect(
+      act(async () => {
+        lastEventSource!.simulateEvent('request:approved', { requestId: 'test-id' })
+      })
+    ).resolves.not.toThrow()
   })
 })
