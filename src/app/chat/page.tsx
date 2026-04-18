@@ -166,8 +166,8 @@ export default function ChatPage() {
                   })
                 }
 
-                // Handle token streaming
-                if (parsed.type === 'token' && parsed.content) {
+                // Handle token streaming (both agent API and regular API formats)
+                if ((parsed.type === 'token' || parsed.type === undefined) && parsed.content) {
                   assistantMessage += parsed.content
                   setMessages((prev) => {
                     const newMessages = [...prev]
@@ -391,9 +391,7 @@ function AgentActivityPanel({
       grouped.push({ start: activity, end: null })
     } else if (activity.type === 'tool_end' && activity.tool) {
       // Find matching pending tool by name
-      const matchingGroup = grouped.find(
-        (g) => g.start?.tool === activity.tool && g.end === null
-      )
+      const matchingGroup = grouped.find((g) => g.start?.tool === activity.tool && g.end === null)
       if (matchingGroup) {
         matchingGroup.end = activity
       } else {
@@ -575,38 +573,51 @@ function formatToolOutput(output: string): string {
     if (parsed && typeof parsed === 'object') {
       // If it has a 'content' field (like AIMessage), return that
       if ('content' in parsed) {
-        return typeof parsed.content === 'string' ? parsed.content : JSON.stringify(parsed.content, null, 2)
+        return typeof parsed.content === 'string'
+          ? parsed.content
+          : JSON.stringify(parsed.content, null, 2)
       }
       // If it's an array of search results, format nicely
       if (Array.isArray(parsed)) {
         return parsed
-          .map((item, i) => `${i + 1}. ${item.title || item.content || JSON.stringify(item).slice(0, 100)}`)
+          .map(
+            (item, i) =>
+              `${i + 1}. ${item.title || item.content || JSON.stringify(item).slice(0, 100)}`
+          )
           .join('\n')
       }
       // If it has kwargs with content, extract that
       if ('kwargs' in parsed && typeof parsed.kwargs === 'object' && parsed.kwargs) {
         const kwargs = parsed.kwargs as Record<string, unknown>
         if ('content' in kwargs) {
-          return typeof kwargs.content === 'string' ? kwargs.content : JSON.stringify(kwargs.content, null, 2)
+          return typeof kwargs.content === 'string'
+            ? kwargs.content
+            : JSON.stringify(kwargs.content, null, 2)
         }
         // Return cleaned kwargs
-        const cleaned = Object.entries(kwargs).reduce((acc, [key, val]) => {
-          if (!key.startsWith('lc_') && key !== 'tool_call_id' && key !== 'name') {
-            acc[key] = val
-          }
-          return acc
-        }, {} as Record<string, unknown>)
+        const cleaned = Object.entries(kwargs).reduce(
+          (acc, [key, val]) => {
+            if (!key.startsWith('lc_') && key !== 'tool_call_id' && key !== 'name') {
+              acc[key] = val
+            }
+            return acc
+          },
+          {} as Record<string, unknown>
+        )
         if (Object.keys(cleaned).length > 0) {
           return JSON.stringify(cleaned, null, 2)
         }
       }
       // Return formatted JSON without internal fields
-      const cleaned = Object.entries(parsed).reduce((acc, [key, val]) => {
-        if (!key.startsWith('lc_') && key !== 'type' && key !== 'id') {
-          acc[key] = val
-        }
-        return acc
-      }, {} as Record<string, unknown>)
+      const cleaned = Object.entries(parsed).reduce(
+        (acc, [key, val]) => {
+          if (!key.startsWith('lc_') && key !== 'type' && key !== 'id') {
+            acc[key] = val
+          }
+          return acc
+        },
+        {} as Record<string, unknown>
+      )
       return Object.keys(cleaned).length > 0 ? JSON.stringify(cleaned, null, 2) : output
     }
     return output

@@ -41,15 +41,22 @@ export function ChatMessage({ role, content, isStreaming = false }: ChatMessageP
                   />
                 ),
                 ul: ({ ...props }) => <ul {...props} className="my-2 list-disc space-y-1 pl-4" />,
-                ol: ({ ...props }) => <ol {...props} className="my-2 list-decimal space-y-1 pl-4" />,
+                ol: ({ ...props }) => (
+                  <ol {...props} className="my-2 list-decimal space-y-1 pl-4" />
+                ),
                 li: ({ ...props }) => <li {...props} className="leading-relaxed" />,
                 p: ({ ...props }) => <p {...props} className="my-2 leading-relaxed" />,
-                strong: ({ ...props }) => <strong {...props} className="font-semibold text-foreground" />,
+                strong: ({ ...props }) => (
+                  <strong {...props} className="font-semibold text-foreground" />
+                ),
                 h1: ({ ...props }) => <h1 {...props} className="my-3 text-lg font-bold" />,
                 h2: ({ ...props }) => <h2 {...props} className="my-2 text-base font-semibold" />,
                 h3: ({ ...props }) => <h3 {...props} className="my-2 text-sm font-semibold" />,
                 code: ({ ...props }) => (
-                  <code {...props} className="rounded bg-secondary/50 px-1.5 py-0.5 text-xs font-mono" />
+                  <code
+                    {...props}
+                    className="rounded bg-secondary/50 px-1.5 py-0.5 font-mono text-xs"
+                  />
                 ),
                 pre: ({ ...props }) => (
                   <pre {...props} className="my-2 overflow-x-auto rounded-lg bg-secondary/30 p-3" />
