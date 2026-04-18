@@ -18,8 +18,8 @@ vi.mock('@/lib/prisma', () => ({
   },
 }))
 
-vi.mock('@/lib/approvals/pusherServer', () => ({
-  triggerApprovalEvent: vi.fn().mockResolvedValue(undefined),
+vi.mock('@/lib/approvals/sseServer', () => ({
+  broadcastApprovalEvent: vi.fn().mockResolvedValue(undefined),
 }))
 
 vi.mock('next-auth', () => ({

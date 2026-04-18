@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import ThemeToggle from '@/components/theme/ThemeToggle'
 
 const NAV_ROUTES = [
   {
@@ -27,6 +28,9 @@ const NAV_ROUTES = [
 export default function Home() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-6 md:p-24">
+      <div className="fixed right-4 top-4 z-50">
+        <ThemeToggle />
+      </div>
       <div className="w-full max-w-3xl">
         <div className="mb-10">
           <h1 className="mb-2 text-4xl font-bold tracking-tight">Dev Navigation</h1>
@@ -36,25 +40,25 @@ export default function Home() {
         </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {NAV_ROUTES.map((route) => (
-            <Link
-              key={route.id}
-              href={route.href}
-              data-testid={`nav-card-${route.id}`}
-              className="group flex flex-col gap-3 rounded-xl border border-border bg-card p-5 shadow-sm transition-all hover:border-primary/50 hover:shadow-md"
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-lg font-semibold group-hover:text-primary">
-                  {route.label}
+            <div key={route.id} data-testid={`nav-card-${route.id}`}>
+              <Link
+                href={route.href}
+                className="group flex flex-col gap-3 rounded-xl border border-border bg-card p-5 shadow-sm transition-all hover:border-primary/50 hover:shadow-md"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-lg font-semibold group-hover:text-primary">
+                    {route.label}
+                  </span>
+                  <span className="rounded-full bg-secondary px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                    {route.badge}
+                  </span>
+                </div>
+                <p className="text-sm text-muted-foreground">{route.description}</p>
+                <span className="mt-auto text-xs font-medium text-primary opacity-0 transition-opacity group-hover:opacity-100">
+                  Open →
                 </span>
-                <span className="rounded-full bg-secondary px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                  {route.badge}
-                </span>
-              </div>
-              <p className="text-sm text-muted-foreground">{route.description}</p>
-              <span className="mt-auto text-xs font-medium text-primary opacity-0 transition-opacity group-hover:opacity-100">
-                Open →
-              </span>
-            </Link>
+              </Link>
+            </div>
           ))}
         </div>
       </div>

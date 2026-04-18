@@ -1,20 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
 import { z } from 'zod'
-import { prisma } from '@/lib/prisma'
 import { createSpan } from '@/lib/telemetry/tracing'
+import { resolveChat, saveAssistantMessage } from '@/lib/chat/helpers'
 
 const requestSchema = z.object({
   message: z.string().min(1, 'Message is required'),
   chatId: z.string().nullable(),
 })
 
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+
+const SSE_HEADERS = {
+  'Content-Type': 'text/event-stream',
+  'Cache-Control': 'no-cache',
+  Connection: 'keep-alive',
+} as const
+
 export async function POST(req: NextRequest) {
   return await createSpan('http.chat.create', async (span) => {
     try {
       const body = await req.json()
-      const validatedData = requestSchema.parse(body)
-      const { message, chatId } = validatedData
+      const { message, chatId } = requestSchema.parse(body)
 
       span.setAttributes({
         'chat.message_length': message.length,
@@ -25,45 +32,12 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'OpenAI API key is not configured' }, { status: 500 })
       }
 
-      let currentChatId = chatId
-
-      if (!currentChatId) {
-        const newChat = await prisma.chat.create({
-          data: {
-            name: message.slice(0, 50),
-          },
-        })
-        currentChatId = newChat.id
-      } else {
-        const existingChat = await prisma.chat.findUnique({
-          where: { id: currentChatId },
-        })
-
-        if (!existingChat) {
-          return NextResponse.json({ error: 'Chat not found' }, { status: 404 })
-        }
+      const chat = await resolveChat(chatId, message)
+      if (!chat) {
+        return NextResponse.json({ error: 'Chat not found' }, { status: 404 })
       }
 
-      await prisma.message.create({
-        data: {
-          role: 'USER',
-          content: message,
-          chatId: currentChatId,
-          userId: null,
-        },
-      })
-
-      const previousMessages = await prisma.message.findMany({
-        where: { chatId: currentChatId },
-        orderBy: { createdAt: 'asc' },
-        take: 20,
-      })
-
-      const openai = new OpenAI({
-        apiKey: process.env.OPENAI_API_KEY,
-      })
-
-      const messages = previousMessages.map((msg: { role: string; content: string }) => ({
+      const messages = chat.previousMessages.map((msg) => ({
         role: msg.role.toLowerCase() as 'user' | 'assistant' | 'system',
         content: msg.content,
       }))
@@ -74,14 +48,14 @@ export async function POST(req: NextRequest) {
         stream: true,
       })
 
+      const encoder = new TextEncoder()
       let fullResponse = ''
 
-      const encoder = new TextEncoder()
       const readableStream = new ReadableStream({
         async start(controller) {
           try {
             controller.enqueue(
-              encoder.encode(`data: ${JSON.stringify({ chatId: currentChatId })}\n\n`)
+              encoder.encode(`data: ${JSON.stringify({ chatId: chat.chatId })}\n\n`)
             )
 
             for await (const chunk of stream) {
@@ -92,14 +66,7 @@ export async function POST(req: NextRequest) {
               }
             }
 
-            await prisma.message.create({
-              data: {
-                role: 'ASSISTANT',
-                content: fullResponse,
-                chatId: currentChatId,
-                userId: null,
-              },
-            })
+            await saveAssistantMessage(chat.chatId, fullResponse)
 
             controller.enqueue(encoder.encode('data: [DONE]\n\n'))
             controller.close()
@@ -109,18 +76,11 @@ export async function POST(req: NextRequest) {
         },
       })
 
-      return new Response(readableStream, {
-        headers: {
-          'Content-Type': 'text/event-stream',
-          'Cache-Control': 'no-cache',
-          Connection: 'keep-alive',
-        },
-      })
+      return new Response(readableStream, { headers: SSE_HEADERS })
     } catch (error) {
       if (error instanceof z.ZodError) {
         return NextResponse.json({ error: error.errors[0].message }, { status: 400 })
       }
-
       console.error('Chat API error:', error)
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
     }

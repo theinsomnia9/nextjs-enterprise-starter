@@ -27,16 +27,17 @@ export interface CompiledAgent {
   }>
 }
 
-/**
- * Creates a LangGraph ReAct agent with Tavily search and calculator tools.
- *
- * Production Note: Uses in-memory MemorySaver. For production, swap to
- * @langchain/langgraph-checkpoint-postgres for persistent conversation state.
- *
- * @param config - Optional agent configuration
- * @returns Compiled LangGraph agent
- * @throws If OPENAI_API_KEY or TAVILY_API_KEY environment variables are missing
- */
+// Module-level singleton — MemorySaver is in-memory and resets on server restart.
+// For production, swap to @langchain/langgraph-checkpoint-postgres.
+let agentSingleton: CompiledAgent | null = null
+
+export function getAgent(config: AgentConfig = {}): CompiledAgent {
+  if (!agentSingleton) {
+    agentSingleton = createAgent(config)
+  }
+  return agentSingleton
+}
+
 export function createAgent(config: AgentConfig = {}): CompiledAgent {
   const openAIApiKey = process.env.OPENAI_API_KEY
   const tavilyApiKey = process.env.TAVILY_API_KEY

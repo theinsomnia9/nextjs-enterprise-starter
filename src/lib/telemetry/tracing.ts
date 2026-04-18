@@ -2,7 +2,7 @@ import { trace, context, SpanStatusCode, Span } from '@opentelemetry/api'
 
 const tracer = trace.getTracer('nextjs-boilerplate', '0.1.0')
 
-export function createSpan(name: string, fn: (span: Span) => Promise<unknown>) {
+export function createSpan<T>(name: string, fn: (span: Span) => Promise<T>): Promise<T> {
   return tracer.startActiveSpan(name, async (span) => {
     try {
       const result = await fn(span)

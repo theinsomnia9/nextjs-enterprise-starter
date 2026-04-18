@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { MessageSquare, Loader2, Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -31,11 +31,7 @@ export function ChatHistory({
   const [chats, setChats] = useState<Chat[]>([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    fetchChatHistory()
-  }, [refreshTrigger])
-
-  const fetchChatHistory = async () => {
+  const fetchChatHistory = useCallback(async () => {
     try {
       const response = await fetch('/api/chat/history')
       const data = await response.json()
@@ -45,7 +41,11 @@ export function ChatHistory({
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    fetchChatHistory()
+  }, [fetchChatHistory, refreshTrigger])
 
   if (loading) {
     return (

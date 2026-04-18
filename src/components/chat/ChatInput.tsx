@@ -12,18 +12,22 @@ interface ChatInputProps {
 export function ChatInput({ onSend, disabled = false }: ChatInputProps) {
   const [message, setMessage] = useState('')
 
-  const handleSubmit = (e: FormEvent) => {
-    e.preventDefault()
+  const sendMessage = () => {
     if (message.trim() && !disabled) {
       onSend(message.trim())
       setMessage('')
     }
   }
 
+  const handleSubmit = (e: FormEvent) => {
+    e.preventDefault()
+    sendMessage()
+  }
+
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
-      handleSubmit(e as any)
+      sendMessage()
     }
   }
 

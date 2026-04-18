@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { QueueDashboard, type QueueRequest } from '@/components/approval/QueueDashboard'
+import { RejectModal } from '@/components/approval/RejectModal'
 import type { StatusCounts } from '@/components/approval/ApprovalPipeline'
 
 const CURRENT_USER_ID = 'dev-user-alice' // TODO: replace with session.user.id when auth is configured
@@ -16,10 +17,7 @@ export default function ApprovalsPage() {
   })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-
   const [rejectTarget, setRejectTarget] = useState<string | null>(null)
-  const [rejectReason, setRejectReason] = useState('')
-  const rejectInputRef = useRef<HTMLTextAreaElement>(null)
 
   const fetchQueue = useCallback(async (isInitialLoad = false) => {
     try {
@@ -41,67 +39,48 @@ export default function ApprovalsPage() {
     fetchQueue(true)
   }, [fetchQueue])
 
-  useEffect(() => {
-    if (rejectTarget) rejectInputRef.current?.focus()
-  }, [rejectTarget])
-
-  const handleLock = useCallback(
-    async (requestId: string) => {
-      await fetch(`/api/approvals/${requestId}/lock`, {
+  const post = useCallback(
+    async (path: string, body: Record<string, string>) => {
+      await fetch(path, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reviewerId: CURRENT_USER_ID }),
+        body: JSON.stringify(body),
       })
       await fetchQueue()
     },
     [fetchQueue]
+  )
+
+  const handleLock = useCallback(
+    (requestId: string) => post(`/api/approvals/${requestId}/lock`, { reviewerId: CURRENT_USER_ID }),
+    [post]
   )
 
   const handleRelease = useCallback(
-    async (requestId: string) => {
-      await fetch(`/api/approvals/${requestId}/release`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reviewerId: CURRENT_USER_ID }),
-      })
-      await fetchQueue()
-    },
-    [fetchQueue]
+    (requestId: string) =>
+      post(`/api/approvals/${requestId}/release`, { reviewerId: CURRENT_USER_ID }),
+    [post]
   )
 
   const handleApprove = useCallback(
-    async (requestId: string) => {
-      await fetch(`/api/approvals/${requestId}/approve`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ approverId: CURRENT_USER_ID }),
-      })
-      await fetchQueue()
-    },
-    [fetchQueue]
+    (requestId: string) =>
+      post(`/api/approvals/${requestId}/approve`, { approverId: CURRENT_USER_ID }),
+    [post]
   )
 
-  const handleReject = useCallback((requestId: string) => {
-    setRejectReason('')
-    setRejectTarget(requestId)
-  }, [])
+  const handleReject = useCallback((requestId: string) => setRejectTarget(requestId), [])
 
-  const confirmReject = useCallback(async () => {
-    if (!rejectTarget || !rejectReason.trim()) return
-    await fetch(`/api/approvals/${rejectTarget}/reject`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ rejectorId: CURRENT_USER_ID, reason: rejectReason.trim() }),
-    })
-    setRejectTarget(null)
-    setRejectReason('')
-    await fetchQueue()
-  }, [rejectTarget, rejectReason, fetchQueue])
-
-  const cancelReject = useCallback(() => {
-    setRejectTarget(null)
-    setRejectReason('')
-  }, [])
+  const confirmReject = useCallback(
+    async (reason: string) => {
+      if (!rejectTarget || !reason.trim()) return
+      await post(`/api/approvals/${rejectTarget}/reject`, {
+        rejectorId: CURRENT_USER_ID,
+        reason: reason.trim(),
+      })
+      setRejectTarget(null)
+    },
+    [rejectTarget, post]
+  )
 
   if (loading) {
     return (
@@ -134,38 +113,7 @@ export default function ApprovalsPage() {
       />
 
       {rejectTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-md rounded-lg border border-border bg-background p-6 shadow-xl">
-            <h2 className="mb-3 text-lg font-semibold">Rejection reason</h2>
-            <textarea
-              ref={rejectInputRef}
-              value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) confirmReject()
-                if (e.key === 'Escape') cancelReject()
-              }}
-              placeholder="Describe why this request is being rejected…"
-              rows={4}
-              className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
-            />
-            <div className="mt-4 flex justify-end gap-2">
-              <button
-                onClick={cancelReject}
-                className="rounded-md border border-border px-4 py-2 text-sm hover:bg-muted"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmReject}
-                disabled={!rejectReason.trim()}
-                className="rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground hover:opacity-90 disabled:opacity-40"
-              >
-                Reject
-              </button>
-            </div>
-          </div>
-        </div>
+        <RejectModal onConfirm={confirmReject} onCancel={() => setRejectTarget(null)} />
       )}
     </main>
   )

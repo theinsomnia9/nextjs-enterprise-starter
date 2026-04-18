@@ -19,7 +19,7 @@ describe('ApprovalPipeline', () => {
     const RealMockES = global.EventSource
     vi.stubGlobal(
       'EventSource',
-      vi.fn().mockImplementation((url: string) => {
+      vi.fn(function (url: string) {
         const instance = new RealMockES(url) as MockEventSourceInstance
         lastEventSource = instance
         return instance

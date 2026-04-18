@@ -47,25 +47,19 @@ export function ApprovalPipeline({ initialCounts, onRefresh }: ApprovalPipelineP
     // Handle specific event types from server
     const handleApprovalEvent = (event: MessageEvent) => {
       try {
-        const data = JSON.parse(event.data)
-        const eventType = event.type as (typeof REFRESH_EVENTS)[number]
-        console.log('[ApprovalPipeline] SSE event received:', eventType, data)
-        if (REFRESH_EVENTS.includes(eventType)) {
-          console.log('[ApprovalPipeline] Triggering refresh for event:', eventType)
+        JSON.parse(event.data)
+        if (REFRESH_EVENTS.includes(event.type as (typeof REFRESH_EVENTS)[number])) {
           onRefresh?.()
         }
-      } catch (err) {
-        console.error('[ApprovalPipeline] Failed to parse SSE data:', err)
+      } catch {
+        // Ignore malformed events
       }
     }
 
-    // Handle generic message events (fallback)
     const handleMessage = (event: MessageEvent) => {
       try {
         const parsed = JSON.parse(event.data)
-        console.log('[ApprovalPipeline] Generic SSE message:', parsed)
         if (parsed.event && REFRESH_EVENTS.includes(parsed.event)) {
-          console.log('[ApprovalPipeline] Triggering refresh from message:', parsed.event)
           onRefresh?.()
         }
       } catch {
@@ -74,8 +68,7 @@ export function ApprovalPipeline({ initialCounts, onRefresh }: ApprovalPipelineP
     }
 
     const handleError = () => {
-      // Auto-reconnect is built into EventSource
-      console.warn('[ApprovalPipeline] SSE connection error - will retry automatically')
+      // EventSource auto-reconnects on error
     }
 
     // Listen for specific approval events

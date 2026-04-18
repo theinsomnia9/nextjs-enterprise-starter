@@ -28,7 +28,7 @@ test.describe('Workflow Builder', () => {
   test('should navigate from home page to builder', async ({ page }) => {
     await page.goto('/')
 
-    await page.getByRole('link', { name: /Open Builder/i }).click()
+    await page.getByTestId('nav-card-builder').getByRole('link').click()
 
     await expect(page).toHaveURL('/builder')
     await expect(page.getByText('Start Node')).toBeVisible()

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
-import { triggerApprovalEvent } from '@/lib/approvals/sseServer'
+import { broadcastApprovalEvent } from '@/lib/approvals/sseServer'
+import { approvalService } from '@/services/approvalService'
 
 export async function GET(req: Request) {
   const cronSecret = process.env.CRON_SECRET
@@ -10,24 +10,11 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const now = new Date()
+  const { count } = await approvalService.expireLocks()
 
-  const result = await prisma.approvalRequest.updateMany({
-    where: {
-      status: 'REVIEWING',
-      lockExpiresAt: { lt: now },
-    },
-    data: {
-      status: 'PENDING',
-      assigneeId: null,
-      lockedAt: null,
-      lockExpiresAt: null,
-    },
-  })
-
-  if (result.count > 0) {
-    await triggerApprovalEvent('queue:counts', { expiredCount: result.count })
+  if (count > 0) {
+    await broadcastApprovalEvent('queue:counts', { expiredCount: count })
   }
 
-  return NextResponse.json({ released: result.count, timestamp: now.toISOString() })
+  return NextResponse.json({ released: count, timestamp: new Date().toISOString() })
 }
