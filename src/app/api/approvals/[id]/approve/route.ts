@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { createSpan } from '@/lib/telemetry/tracing'
-import { triggerApprovalEvent } from '@/lib/approvals/sseServer'
+import { broadcastApprovalEvent } from '@/lib/approvals/sseServer'
 import { z } from 'zod'
 
 const approveSchema = z.object({
@@ -52,11 +52,11 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       })
     })
 
-    await triggerApprovalEvent('request:approved', { requestId: id })
+    await broadcastApprovalEvent('request:approved', { requestId: id })
 
     return NextResponse.json(updated)
   }).catch((err: Error & { statusCode?: number }) => {
     const status = err.statusCode ?? 500
     return NextResponse.json({ error: err.message }, { status })
-  }) as Promise<NextResponse>
+  })
 }

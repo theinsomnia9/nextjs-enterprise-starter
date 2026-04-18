@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { createSpan } from '@/lib/telemetry/tracing'
-import { triggerApprovalEvent } from '@/lib/approvals/sseServer'
+import { broadcastApprovalEvent } from '@/lib/approvals/sseServer'
 import { z } from 'zod'
 
 const lockSchema = z.object({
@@ -64,7 +64,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       return { ...result, _lockExpiresAt: lockExpiresAt }
     })
 
-    await triggerApprovalEvent('request:locked', {
+    await broadcastApprovalEvent('request:locked', {
       requestId: id,
       reviewerId,
       expiresAt: updated._lockExpiresAt.toISOString(),
@@ -74,5 +74,5 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   }).catch((err: Error & { statusCode?: number }) => {
     const status = err.statusCode ?? 500
     return NextResponse.json({ error: err.message }, { status })
-  }) as Promise<NextResponse>
+  })
 }

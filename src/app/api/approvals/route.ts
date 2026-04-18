@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { createSpan } from '@/lib/telemetry/tracing'
-import { triggerApprovalEvent } from '@/lib/approvals/sseServer'
+import { broadcastApprovalEvent } from '@/lib/approvals/sseServer'
 import { createApprovalSchema } from '@/lib/approvals/schemas'
 
 export async function POST(req: NextRequest) {
@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
         },
       })
 
-      await triggerApprovalEvent('request:submitted', {
+      await broadcastApprovalEvent('request:submitted', {
         requestId: request.id,
         title: request.title,
         category: request.category,
@@ -44,5 +44,5 @@ export async function POST(req: NextRequest) {
       }
       throw err
     }
-  }) as Promise<NextResponse>
+  })
 }

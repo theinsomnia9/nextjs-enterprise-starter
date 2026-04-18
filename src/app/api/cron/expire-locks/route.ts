@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { triggerApprovalEvent } from '@/lib/approvals/sseServer'
+import { broadcastApprovalEvent } from '@/lib/approvals/sseServer'
 
 export async function GET(req: Request) {
   const cronSecret = process.env.CRON_SECRET
@@ -26,7 +26,7 @@ export async function GET(req: Request) {
   })
 
   if (result.count > 0) {
-    await triggerApprovalEvent('queue:counts', { expiredCount: result.count })
+    await broadcastApprovalEvent('queue:counts', { expiredCount: result.count })
   }
 
   return NextResponse.json({ released: result.count, timestamp: now.toISOString() })

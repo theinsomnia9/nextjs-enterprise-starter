@@ -26,15 +26,10 @@ const clients = globalForSSE.sseClients
  */
 export function addClient(writer: WritableStreamDefaultWriter<string>): void {
   clients.add(writer)
-  console.log(`[SSE Server] Client connected. Total clients: ${clients.size}`)
 }
 
-/**
- * Remove an SSE client connection
- */
 export function removeClient(writer: WritableStreamDefaultWriter<string>): void {
   clients.delete(writer)
-  console.log(`[SSE Server] Client disconnected. Total clients: ${clients.size}`)
 }
 
 /**
@@ -61,7 +56,6 @@ export async function broadcastApprovalEvent(
   await createSpan('sse.broadcast', async () => {
     // SSE format: event name header + data payload + double newline
     const message = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`
-    console.log(`[SSE Server] Broadcasting to ${clients.size} clients:`, event, data)
     const deadClients: WritableStreamDefaultWriter<string>[] = []
 
     for (const client of clients) {
@@ -85,13 +79,3 @@ export async function broadcastApprovalEvent(
   })
 }
 
-/**
- * Legacy alias for backward compatibility during migration
- * @deprecated Use broadcastApprovalEvent instead
- */
-export async function triggerApprovalEvent(
-  event: ApprovalEventName,
-  data: Record<string, unknown>
-): Promise<void> {
-  return broadcastApprovalEvent(event, data)
-}
