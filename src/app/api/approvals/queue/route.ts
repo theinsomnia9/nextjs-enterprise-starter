@@ -1,12 +1,16 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { createSpan } from '@/lib/telemetry/tracing'
-import { calculatePriorityScore } from '@/lib/approvals/priorityScore'
+import { calculatePriorityScore, getDefaultPriorityConfig } from '@/lib/approvals/priorityScore'
 import type { PriorityConfigValues } from '@/lib/approvals/types'
+
+const DEFAULT_CONFIGS = new Map(
+  getDefaultPriorityConfig().map((c) => [c.category, c as PriorityConfigValues])
+)
 
 export async function GET() {
   return createSpan('approvals.queue.get', async () => {
-    const [requests, configs, statusGroups] = await Promise.all([
+    const [requests, dbConfigs, statusGroups] = await Promise.all([
       prisma.approvalRequest.findMany({
         where: { status: { in: ['PENDING', 'REVIEWING'] } },
         include: {
@@ -23,30 +27,18 @@ export async function GET() {
       counts[g.status] = g._count.id
     })
 
-    const configMap = new Map<string, PriorityConfigValues>(
-      configs.map((c) => [
-        c.category,
-        {
-          baseWeight: c.baseWeight,
-          agingFactor: c.agingFactor,
-          slaHours: c.slaHours,
-          lockTimeoutMinutes: c.lockTimeoutMinutes,
-        },
-      ])
-    )
+    const configMap = new Map<string, PriorityConfigValues>([
+      ...DEFAULT_CONFIGS,
+      ...dbConfigs.map((c) => [c.category, c as PriorityConfigValues] as const),
+    ])
 
     const scored = requests
-      .map((r) => {
-        const cfg = configMap.get(r.category) ?? {
-          baseWeight: 25,
-          agingFactor: 0.5,
-          slaHours: 120,
-          lockTimeoutMinutes: 5,
-        }
-        return { ...r, priorityScore: calculatePriorityScore(r.submittedAt, cfg) }
-      })
+      .map((r) => ({
+        ...r,
+        priorityScore: calculatePriorityScore(r.submittedAt, configMap.get(r.category)!),
+      }))
       .sort((a, b) => b.priorityScore - a.priorityScore)
 
     return NextResponse.json({ requests: scored, total: scored.length, counts })
-  }) as Promise<NextResponse>
+  })
 }
