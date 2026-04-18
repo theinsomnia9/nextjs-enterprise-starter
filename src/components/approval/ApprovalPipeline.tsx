@@ -1,8 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import PusherJS from 'pusher-js'
-import { APPROVAL_CHANNEL } from '@/lib/approvals/constants'
 
 export type StatusCounts = {
   PENDING: number
@@ -25,6 +23,16 @@ const STAGE_COLORS: Record<keyof StatusCounts, string> = {
   REJECTED: 'hsl(var(--status-rejected))',
 }
 
+// List of events that trigger a refresh
+const REFRESH_EVENTS = [
+  'request:submitted',
+  'request:locked',
+  'request:unlocked',
+  'request:approved',
+  'request:rejected',
+  'queue:counts',
+]
+
 export function ApprovalPipeline({ initialCounts, onRefresh }: ApprovalPipelineProps) {
   const [counts, setCounts] = useState<StatusCounts>(initialCounts)
 
@@ -33,41 +41,58 @@ export function ApprovalPipeline({ initialCounts, onRefresh }: ApprovalPipelineP
   }, [initialCounts])
 
   useEffect(() => {
-    const appKey = process.env.NEXT_PUBLIC_PUSHER_APP_KEY
-    if (!appKey) {
-      console.warn(
-        '[ApprovalPipeline] NEXT_PUBLIC_PUSHER_APP_KEY not set — real-time updates disabled'
-      )
-      return
+    // Use Server-Sent Events (SSE) instead of WebSockets
+    const eventSource = new EventSource('/api/sse/approvals')
+
+    // Handle specific event types from server
+    const handleApprovalEvent = (event: MessageEvent) => {
+      try {
+        const data = JSON.parse(event.data)
+        const eventType = event.type as (typeof REFRESH_EVENTS)[number]
+        console.log('[ApprovalPipeline] SSE event received:', eventType, data)
+        if (REFRESH_EVENTS.includes(eventType)) {
+          console.log('[ApprovalPipeline] Triggering refresh for event:', eventType)
+          onRefresh?.()
+        }
+      } catch (err) {
+        console.error('[ApprovalPipeline] Failed to parse SSE data:', err)
+      }
     }
 
-    const pusher = new PusherJS(appKey, {
-      wsHost: process.env.NEXT_PUBLIC_PUSHER_HOST ?? 'localhost',
-      wsPort: Number(process.env.NEXT_PUBLIC_PUSHER_PORT ?? '6001'),
-      forceTLS: false,
-      enabledTransports: ['ws'],
-      authEndpoint: '/api/pusher/auth',
-      cluster: 'self-hosted',
-      disableStats: true,
+    // Handle generic message events (fallback)
+    const handleMessage = (event: MessageEvent) => {
+      try {
+        const parsed = JSON.parse(event.data)
+        console.log('[ApprovalPipeline] Generic SSE message:', parsed)
+        if (parsed.event && REFRESH_EVENTS.includes(parsed.event)) {
+          console.log('[ApprovalPipeline] Triggering refresh from message:', parsed.event)
+          onRefresh?.()
+        }
+      } catch {
+        // Ignore malformed messages or ping events
+      }
+    }
+
+    const handleError = () => {
+      // Auto-reconnect is built into EventSource
+      console.warn('[ApprovalPipeline] SSE connection error - will retry automatically')
+    }
+
+    // Listen for specific approval events
+    REFRESH_EVENTS.forEach((eventName) => {
+      eventSource.addEventListener(eventName, handleApprovalEvent)
     })
-
-    const channel = pusher.subscribe(APPROVAL_CHANNEL)
-
-    const refresh = () => {
-      onRefresh?.()
-    }
-
-    channel.bind('request:submitted', refresh)
-    channel.bind('request:locked', refresh)
-    channel.bind('request:unlocked', refresh)
-    channel.bind('request:approved', refresh)
-    channel.bind('request:rejected', refresh)
-    channel.bind('queue:counts', refresh)
+    // Also listen for generic messages as fallback
+    eventSource.addEventListener('message', handleMessage)
+    eventSource.addEventListener('error', handleError)
 
     return () => {
-      channel.unbind_all()
-      pusher.unsubscribe(APPROVAL_CHANNEL)
-      pusher.disconnect()
+      REFRESH_EVENTS.forEach((eventName) => {
+        eventSource.removeEventListener(eventName, handleApprovalEvent)
+      })
+      eventSource.removeEventListener('message', handleMessage)
+      eventSource.removeEventListener('error', handleError)
+      eventSource.close()
     }
   }, [onRefresh])
 

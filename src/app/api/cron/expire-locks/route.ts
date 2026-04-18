@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { triggerApprovalEvent } from '@/lib/approvals/pusherServer'
+import { triggerApprovalEvent } from '@/lib/approvals/sseServer'
 
 export async function GET(req: Request) {
   const cronSecret = process.env.CRON_SECRET
