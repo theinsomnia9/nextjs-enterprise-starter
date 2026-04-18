@@ -78,3 +78,66 @@ Object.defineProperty(window, 'localStorage', {
 
 // Mock scrollIntoView
 Element.prototype.scrollIntoView = vi.fn()
+
+// Mock EventSource for SSE tests
+class MockEventSource {
+  url: string
+  readyState: number = 0
+  onopen: ((ev: Event) => void) | null = null
+  onmessage: ((ev: MessageEvent) => void) | null = null
+  onerror: ((ev: Event) => void) | null = null
+  private listeners: Map<string, EventListener[]> = new Map()
+
+  constructor(url: string) {
+    this.url = url
+    this.readyState = 1
+    setTimeout(() => {
+      this.readyState = 1
+      this.onopen?.(new Event('open'))
+    }, 0)
+  }
+
+  addEventListener(type: string, listener: EventListener): void {
+    const listeners = this.listeners.get(type) || []
+    listeners.push(listener)
+    this.listeners.set(type, listeners)
+  }
+
+  removeEventListener(type: string, listener: EventListener): void {
+    const listeners = this.listeners.get(type) || []
+    const index = listeners.indexOf(listener)
+    if (index > -1) {
+      listeners.splice(index, 1)
+    }
+    this.listeners.set(type, listeners)
+  }
+
+  close(): void {
+    this.readyState = 2
+  }
+
+  // Helper: simulate a generic 'message' event (for fallback handler)
+  simulateMessage(data: string): void {
+    const event = new MessageEvent('message', { data })
+    this.onmessage?.(event)
+    const listeners = this.listeners.get('message') || []
+    listeners.forEach((listener) => listener(event))
+  }
+
+  // Helper: simulate a named SSE event (e.g. 'request:approved')
+  // This matches the server format: `event: request:approved\ndata: {...}\n\n`
+  simulateEvent(type: string, data: unknown): void {
+    const event = new MessageEvent(type, { data: JSON.stringify(data) })
+    if (type === 'message') {
+      this.onmessage?.(event)
+    }
+    const listeners = this.listeners.get(type) || []
+    listeners.forEach((listener) => listener(event))
+  }
+}
+
+Object.defineProperty(global, 'EventSource', {
+  value: MockEventSource,
+  writable: true,
+  configurable: true,
+})
