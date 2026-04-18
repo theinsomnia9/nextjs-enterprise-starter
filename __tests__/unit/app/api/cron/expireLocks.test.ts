@@ -9,7 +9,7 @@ vi.mock('@/lib/prisma', () => ({
 }))
 
 vi.mock('@/lib/approvals/sseServer', () => ({
-  triggerApprovalEvent: vi.fn().mockResolvedValue(undefined),
+  broadcastApprovalEvent: vi.fn().mockResolvedValue(undefined),
 }))
 
 describe('GET /api/cron/expire-locks', () => {
@@ -62,12 +62,12 @@ describe('GET /api/cron/expire-locks', () => {
   })
 
   it('triggers queue:counts SSE event after release', async () => {
-    const { triggerApprovalEvent } = await import('@/lib/approvals/sseServer')
+    const { broadcastApprovalEvent } = await import('@/lib/approvals/sseServer')
     const { GET } = await import('@/app/api/cron/expire-locks/route')
     const req = new Request('http://localhost/api/cron/expire-locks', {
       headers: { Authorization: 'Bearer test-secret' },
     })
     await GET(req)
-    expect(triggerApprovalEvent).toHaveBeenCalledWith('queue:counts', expect.any(Object))
+    expect(broadcastApprovalEvent).toHaveBeenCalledWith('queue:counts', expect.any(Object))
   })
 })
