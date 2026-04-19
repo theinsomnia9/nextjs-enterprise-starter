@@ -15,6 +15,11 @@ interface Message {
   content: string
 }
 
+const clearThinking = (activities: AgentActivity[]) =>
+  activities.some((a) => a.type === 'thinking')
+    ? activities.filter((a) => a.type !== 'thinking')
+    : activities
+
 export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([])
   const [isStreaming, setIsStreaming] = useState(false)
@@ -25,15 +30,16 @@ export default function ChatPage() {
   const [agentMode, setAgentMode] = useState(false)
   const [agentActivity, setAgentActivity] = useState<AgentActivity[]>([])
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const streamAbortRef = useRef<AbortController | null>(null)
   const { theme, toggleTheme } = useTheme()
 
   useEffect(() => {
-    scrollToBottom()
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }
+  useEffect(() => {
+    return () => streamAbortRef.current?.abort()
+  }, [])
 
   const loadChatMessages = async (chatId: string) => {
     try {
@@ -55,6 +61,10 @@ export default function ChatPage() {
   }
 
   const handleSendMessage = async (content: string) => {
+    streamAbortRef.current?.abort()
+    const controller = new AbortController()
+    streamAbortRef.current = controller
+
     setError(null)
     setAgentActivity([]) // Clear previous activity
     const userMessage: Message = {
@@ -78,6 +88,7 @@ export default function ChatPage() {
           chatId: currentChatId,
           ...(agentMode && currentChatId ? { threadId: currentChatId } : {}),
         }),
+        signal: controller.signal,
       })
 
       if (!response.ok) {
@@ -100,8 +111,7 @@ export default function ChatPage() {
             if (line.startsWith('data: ')) {
               const data = line.slice(6)
               if (data === '[DONE]') {
-                // Clear all thinking states when done
-                setAgentActivity((prev) => prev.filter((a) => a.type !== 'thinking'))
+                setAgentActivity(clearThinking)
                 break
               }
 
@@ -120,14 +130,13 @@ export default function ChatPage() {
                   parsed.type === 'tool_end'
                 ) {
                   setAgentActivity((prev) => {
-                    // Remove previous 'thinking' entries when tool starts or ends
-                    const filtered =
+                    const base =
                       parsed.type === 'tool_start' || parsed.type === 'tool_end'
-                        ? prev.filter((a) => a.type !== 'thinking')
+                        ? clearThinking(prev)
                         : prev
 
                     return [
-                      ...filtered,
+                      ...base,
                       {
                         id: `activity-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
                         type: parsed.type,
@@ -144,18 +153,18 @@ export default function ChatPage() {
                 if ((parsed.type === 'token' || parsed.type === undefined) && parsed.content) {
                   assistantMessage += parsed.content
                   setMessages((prev) => {
-                    const newMessages = [...prev]
-                    const lastMessage = newMessages[newMessages.length - 1]
-                    if (lastMessage?.role === 'ASSISTANT') {
-                      lastMessage.content = assistantMessage
-                    } else {
-                      newMessages.push({
+                    const last = prev[prev.length - 1]
+                    if (last?.role === 'ASSISTANT') {
+                      return [...prev.slice(0, -1), { ...last, content: assistantMessage }]
+                    }
+                    return [
+                      ...prev,
+                      {
                         id: `assistant-${Date.now()}`,
                         role: 'ASSISTANT',
                         content: assistantMessage,
-                      })
-                    }
-                    return newMessages
+                      },
+                    ]
                   })
                 }
               } catch (e) {
@@ -166,12 +175,14 @@ export default function ChatPage() {
         }
       }
     } catch (error) {
+      if (controller.signal.aborted) return
       console.error('Error sending message:', error)
       setError('Failed to send message. Please try again.')
     } finally {
-      setIsStreaming(false)
-      // Clear any remaining thinking states
-      setAgentActivity((prev) => prev.filter((a) => a.type !== 'thinking'))
+      if (!controller.signal.aborted) {
+        setIsStreaming(false)
+        setAgentActivity(clearThinking)
+      }
     }
   }
 

@@ -236,11 +236,8 @@ export function ApprovalFlowDiagram({ request, roomId }: ApprovalFlowDiagramProp
   const [selectedNodeId, setSelectedNodeId] = useState<NodeId | null>(null)
   const yjsRoomRef = useRef<YjsRoom | null>(null)
 
-  const initialNodesRef = useRef<RFNode[]>(buildInitialNodes(request))
-  const initialEdgesRef = useRef<RFEdge[]>(buildInitialEdges(request))
-
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodesRef.current)
-  const [edges, , onEdgesChange] = useEdgesState(initialEdgesRef.current)
+  const [nodes, setNodes, onNodesChange] = useNodesState(buildInitialNodes(request))
+  const [edges, , onEdgesChange] = useEdgesState(buildInitialEdges(request))
 
   useEffect(() => {
     setNodes((prev) =>

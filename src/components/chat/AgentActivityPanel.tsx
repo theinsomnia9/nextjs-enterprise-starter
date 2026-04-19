@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Bot, CheckCircle2, ChevronDown, Loader2, Wrench } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -98,28 +98,30 @@ export function AgentActivityPanel({
     setExpandedTools((prev) => ({ ...prev, [id]: !prev[id] }))
   }
 
-  const pendingTools = new Map<string, AgentActivity>()
-  const grouped: Array<{
-    start: AgentActivity | null
-    end: AgentActivity | null
-    single?: AgentActivity
-  }> = []
+  const grouped = useMemo(() => {
+    const result: Array<{
+      start: AgentActivity | null
+      end: AgentActivity | null
+      single?: AgentActivity
+    }> = []
 
-  activities.forEach((activity) => {
-    if (activity.type === 'tool_start' && activity.tool) {
-      pendingTools.set(activity.tool, activity)
-      grouped.push({ start: activity, end: null })
-    } else if (activity.type === 'tool_end' && activity.tool) {
-      const matchingGroup = grouped.find((g) => g.start?.tool === activity.tool && g.end === null)
-      if (matchingGroup) {
-        matchingGroup.end = activity
-      } else {
-        grouped.push({ start: null, end: activity })
+    activities.forEach((activity) => {
+      if (activity.type === 'tool_start' && activity.tool) {
+        result.push({ start: activity, end: null })
+      } else if (activity.type === 'tool_end' && activity.tool) {
+        const matchingGroup = result.find((g) => g.start?.tool === activity.tool && g.end === null)
+        if (matchingGroup) {
+          matchingGroup.end = activity
+        } else {
+          result.push({ start: null, end: activity })
+        }
+      } else if (activity.type === 'thinking') {
+        result.push({ start: null, end: null, single: activity })
       }
-    } else if (activity.type === 'thinking') {
-      grouped.push({ start: null, end: null, single: activity })
-    }
-  })
+    })
+
+    return result
+  }, [activities])
 
   return (
     <div className="rounded-xl border border-primary/20 bg-gradient-to-br from-primary/5 to-muted p-4 shadow-sm">
