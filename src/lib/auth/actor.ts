@@ -1,4 +1,4 @@
-import { cookies } from 'next/headers'
+import { cookies, headers } from 'next/headers'
 import { AppError, ErrorCode } from '@/lib/errors/AppError'
 import { authConfig } from './config'
 import {
@@ -7,6 +7,7 @@ import {
 } from './cookies'
 import { decodeSession, encodeSession, type SessionPayload } from './session'
 import type { Role } from './roles'
+import { SESSION_HEADER } from './sessionHeader'
 
 export type Actor = {
   id: string
@@ -21,7 +22,39 @@ function unauthorized(): AppError {
   })
 }
 
+function parseForwardedSession(raw: string): SessionPayload | null {
+  try {
+    const obj = JSON.parse(raw) as Partial<SessionPayload>
+    if (
+      typeof obj.userId === 'string' &&
+      typeof obj.entraOid === 'string' &&
+      Array.isArray(obj.roles) &&
+      typeof obj.iat === 'number' &&
+      typeof obj.exp === 'number'
+    ) {
+      return obj as SessionPayload
+    }
+  } catch {
+    // fall through
+  }
+  return null
+}
+
 async function readSession(): Promise<SessionPayload | null> {
+  // Prefer middleware-forwarded payload to avoid a redundant JWE decrypt.
+  // The header is stripped from client requests by middleware before being
+  // (re)set, so it is trusted as already-verified when present.
+  try {
+    const h = await headers()
+    const forwarded = h.get(SESSION_HEADER)
+    if (forwarded) {
+      const session = parseForwardedSession(forwarded)
+      if (session) return session
+    }
+  } catch {
+    // headers() unavailable outside request scope — fall back to cookie.
+  }
+
   const store = await cookies()
   const raw = store.get(SESSION_COOKIE)?.value
   if (!raw) return null

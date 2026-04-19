@@ -65,4 +65,26 @@ describe('middleware', () => {
     expect(res.status).toBe(307)
     expect(res.headers.get('location')).toContain('/auth/signin')
   })
+
+  it('strips a client-supplied x-auth-session header on public paths', async () => {
+    const req = mkRequest('/auth/signin')
+    req.headers.set('x-auth-session', '{"userId":"forged","roles":["Admin"]}')
+    const { middleware } = await import('@/middleware')
+    const res = await middleware(req)
+    expect(res.status).toBe(200)
+    expect(res.headers.get('x-middleware-override-headers') ?? '').toContain('x-auth-session')
+    expect(res.headers.get('x-middleware-request-x-auth-session')).toBe('')
+  })
+
+  it('forwards the verified session payload via x-auth-session on authenticated requests', async () => {
+    const cookie = `session=${encodeURIComponent(await freshCookie())}`
+    const { middleware } = await import('@/middleware')
+    const res = await middleware(mkRequest('/approvals', cookie))
+    expect(res.status).toBe(200)
+    const forwarded = res.headers.get('x-middleware-request-x-auth-session') ?? ''
+    expect(forwarded).toBeTruthy()
+    const parsed = JSON.parse(forwarded)
+    expect(parsed.userId).toBe('u_1')
+    expect(parsed.roles).toEqual(['Approver'])
+  })
 })

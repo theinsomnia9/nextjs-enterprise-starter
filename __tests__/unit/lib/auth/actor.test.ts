@@ -10,9 +10,11 @@ beforeAll(() => {
 })
 
 const mockStore = { get: vi.fn(), set: vi.fn(), delete: vi.fn() }
+const mockHeaders = { get: vi.fn<(name: string) => string | null>() }
 
 vi.mock('next/headers', () => ({
   cookies: vi.fn(async () => mockStore),
+  headers: vi.fn(async () => mockHeaders),
 }))
 
 async function encodeFresh(overrides: Record<string, unknown> = {}) {
@@ -33,6 +35,8 @@ describe('getActor', () => {
     mockStore.get.mockReset()
     mockStore.set.mockReset()
     mockStore.delete.mockReset()
+    mockHeaders.get.mockReset()
+    mockHeaders.get.mockReturnValue(null)
   })
 
   it('returns { id, roles } when the session cookie is valid', async () => {
@@ -104,6 +108,8 @@ describe('getActorId (back-compat shim)', () => {
   beforeEach(() => {
     mockStore.get.mockReset()
     mockStore.set.mockReset()
+    mockHeaders.get.mockReset()
+    mockHeaders.get.mockReturnValue(null)
   })
 
   it('returns the id string', async () => {
@@ -111,5 +117,54 @@ describe('getActorId (back-compat shim)', () => {
     mockStore.get.mockReturnValue({ value: cookie })
     const { getActorId } = await import('@/lib/auth/actor')
     await expect(getActorId()).resolves.toBe('u_1')
+  })
+})
+
+describe('readSession middleware-forwarded header', () => {
+  beforeEach(() => {
+    mockStore.get.mockReset()
+    mockStore.set.mockReset()
+    mockHeaders.get.mockReset()
+  })
+
+  it('uses the forwarded payload without decrypting the cookie', async () => {
+    const now = Math.floor(Date.now() / 1000)
+    const payload = {
+      userId: 'u_hdr',
+      entraOid: 'oid_hdr',
+      roles: ['Admin'],
+      name: null,
+      email: null,
+      photoUrl: null,
+      iat: now,
+      exp: now + 12 * 60 * 60,
+    }
+    mockHeaders.get.mockImplementation((n: string) =>
+      n === 'x-auth-session' ? JSON.stringify(payload) : null
+    )
+    // Cookie is deliberately garbage — header path must win.
+    mockStore.get.mockReturnValue({ value: 'garbage' })
+    const { getActor } = await import('@/lib/auth/actor')
+    await expect(getActor()).resolves.toEqual({ id: 'u_hdr', roles: ['Admin'] })
+  })
+
+  it('falls back to cookie decrypt when the forwarded header is malformed', async () => {
+    const cookie = await encodeFresh({ userId: 'u_fb', roles: ['Approver'] })
+    mockHeaders.get.mockImplementation((n: string) =>
+      n === 'x-auth-session' ? 'not-json' : null
+    )
+    mockStore.get.mockReturnValue({ value: cookie })
+    const { getActor } = await import('@/lib/auth/actor')
+    await expect(getActor()).resolves.toEqual({ id: 'u_fb', roles: ['Approver'] })
+  })
+
+  it('falls back when the forwarded header is missing required fields', async () => {
+    const cookie = await encodeFresh({ userId: 'u_partial' })
+    mockHeaders.get.mockImplementation((n: string) =>
+      n === 'x-auth-session' ? JSON.stringify({ userId: 'only-user' }) : null
+    )
+    mockStore.get.mockReturnValue({ value: cookie })
+    const { getActor } = await import('@/lib/auth/actor')
+    await expect(getActor()).resolves.toMatchObject({ id: 'u_partial' })
   })
 })
