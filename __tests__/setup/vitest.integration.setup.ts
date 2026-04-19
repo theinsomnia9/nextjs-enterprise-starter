@@ -1,6 +1,8 @@
 import { vi } from 'vitest'
+import { config } from 'dotenv'
 
-// Suppress console noise in integration tests
+config({ path: '.env.test', override: true })
+
 global.console = {
   ...console,
   error: vi.fn(),
