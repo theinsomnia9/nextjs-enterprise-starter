@@ -1,4 +1,4 @@
-import { EncryptJWT, jwtDecrypt, importJWK } from 'jose'
+import { EncryptJWT, jwtDecrypt } from 'jose'
 import { authConfig } from './config'
 import type { Role } from './roles'
 
@@ -15,19 +15,22 @@ export type SessionPayload = {
 
 export type SessionInput = Omit<SessionPayload, 'iat' | 'exp'>
 
-async function getKey() {
-  // jose requires 32 bytes for A256GCM. Derive deterministically from the secret.
+// HKDF context: bump this version string if the cookie format changes so old
+// cookies fail to decode cleanly rather than decrypting to garbage.
+const HKDF_INFO = new TextEncoder().encode('nbp-auth-session:a256gcm:v1')
+
+async function getKey(): Promise<CryptoKey> {
   // Read process.env directly so key derivation always reflects the current secret
   // (important for tests that swap secrets between imports).
   const secret = process.env.AUTH_SESSION_SECRET ?? authConfig.sessionSecret
-  const raw = new TextEncoder().encode(secret)
-  // Simple pad/truncate to 32 bytes; prod secrets are already 32+ bytes.
-  const bytes = new Uint8Array(32)
-  for (let i = 0; i < 32; i++) bytes[i] = raw[i % raw.length] ?? 0
-  // Import as JWK to ensure compatibility across environments (jsdom, Edge, Node).
-  return importJWK(
-    { kty: 'oct', k: btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, ''), alg: 'A256GCM' },
-    'A256GCM'
+  const ikm = new TextEncoder().encode(secret)
+  const ikmKey = await crypto.subtle.importKey('raw', ikm, 'HKDF', false, ['deriveKey'])
+  return crypto.subtle.deriveKey(
+    { name: 'HKDF', hash: 'SHA-256', salt: new Uint8Array(), info: HKDF_INFO },
+    ikmKey,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt']
   )
 }
 

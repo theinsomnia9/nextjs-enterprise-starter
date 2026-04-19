@@ -1,23 +1,20 @@
-import { EncryptJWT, importJWK } from 'jose'
+import { EncryptJWT } from 'jose'
 import type { Role } from '@/lib/auth/roles'
 
+// Must match src/lib/auth/session.ts exactly — forged cookies are indistinguishable
+// from production.
+const HKDF_INFO = new TextEncoder().encode('nbp-auth-session:a256gcm:v1')
+
 async function getKey(secret: string): Promise<CryptoKey> {
-  const raw = new TextEncoder().encode(secret)
-  // Same derivation as src/lib/auth/session.ts — pad/truncate to 32 bytes
-  const bytes = new Uint8Array(32)
-  for (let i = 0; i < 32; i++) bytes[i] = raw[i % raw.length] ?? 0
-  // Import as JWK to match the production session.ts key derivation exactly
-  return importJWK(
-    {
-      kty: 'oct',
-      k: btoa(String.fromCharCode(...bytes))
-        .replace(/\+/g, '-')
-        .replace(/\//g, '_')
-        .replace(/=/g, ''),
-      alg: 'A256GCM',
-    },
-    'A256GCM'
-  ) as Promise<CryptoKey>
+  const ikm = new TextEncoder().encode(secret)
+  const ikmKey = await crypto.subtle.importKey('raw', ikm, 'HKDF', false, ['deriveKey'])
+  return crypto.subtle.deriveKey(
+    { name: 'HKDF', hash: 'SHA-256', salt: new Uint8Array(), info: HKDF_INFO },
+    ikmKey,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt']
+  )
 }
 
 export async function buildSessionCookie(args: {
