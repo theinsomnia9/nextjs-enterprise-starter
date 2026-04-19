@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { IApprovalRepository, approvalRepository } from '@/lib/approvals/repository'
-import { notFound, alreadyResolved, lockedByOther, notCurrentReviewer } from '@/lib/errors/AppError'
+import { notFound, alreadyResolved, lockedByOther, notCurrentReviewer, validationError } from '@/lib/errors/AppError'
 import type { PriorityConfigValues } from '@/lib/approvals/types'
 import type { Prisma } from '@prisma/client'
 
@@ -55,7 +55,19 @@ export class ApprovalService {
   }
 
   async createApproval(data: Prisma.ApprovalRequestCreateInput) {
-    return this.repo.create(data)
+    try {
+      return await this.repo.create(data)
+    } catch (err: unknown) {
+      const code = (err as { code?: string }).code
+      if (code === 'P2003' || code === 'P2025') {
+        const requesterId =
+          (data.requester as { connect?: { id?: string } } | undefined)?.connect?.id ?? 'unknown'
+        throw validationError(
+          `requesterId "${requesterId}" does not exist. Use a seeded dev user id (e.g. dev-user-alice).`
+        )
+      }
+      throw err
+    }
   }
 
   async lock(id: string, reviewerId: string) {
