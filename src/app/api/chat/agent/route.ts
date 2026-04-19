@@ -4,7 +4,7 @@ import { createSpan } from '@/lib/telemetry/tracing'
 import { getAgent } from '@/lib/agent/agent'
 import { resolveChat, saveAssistantMessage } from '@/lib/chat/helpers'
 import { HumanMessage, AIMessage, SystemMessage } from '@langchain/core/messages'
-import { SSE_HEADERS } from '@/lib/sse/eventTypes'
+import { SSE_HEADERS, SSE_DONE_FRAME, AGENT_STREAM_EVENTS } from '@/lib/sse/eventTypes'
 
 const requestSchema = z.object({
   message: z.string().min(1, 'Message is required'),
@@ -59,14 +59,18 @@ export async function POST(req: NextRequest) {
       const encoder = new TextEncoder()
       let fullResponse = ''
 
-      const send = (controller: ReadableStreamDefaultController, payload: unknown) => {
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`))
-      }
-
       const readableStream = new ReadableStream({
         async start(controller) {
+          const send = (payload: unknown) => {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`))
+          }
+          const finalize = () => {
+            controller.enqueue(encoder.encode(SSE_DONE_FRAME))
+            controller.close()
+          }
+
           try {
-            send(controller, { chatId: chat.chatId })
+            send({ chatId: chat.chatId })
 
             const eventStream = agent.streamEvents(
               { messages: langChainMessages },
@@ -79,42 +83,32 @@ export async function POST(req: NextRequest) {
             )
 
             for await (const event of eventStream) {
-              if (event.event === 'on_chat_model_stream') {
+              if (event.event === 'on_chat_model_start') {
+                send({ type: AGENT_STREAM_EVENTS.THINKING, message: 'Agent is thinking...' })
+              } else if (event.event === 'on_chat_model_stream') {
                 const content = event.data?.chunk?.content
                 if (content) {
                   fullResponse += content
-                  send(controller, { type: 'token', content })
+                  send({ type: AGENT_STREAM_EVENTS.TOKEN, content })
                 }
-              }
-
-              if (event.event === 'on_tool_start') {
-                send(controller, {
-                  type: 'tool_start',
+              } else if (event.event === 'on_tool_start') {
+                send({
+                  type: AGENT_STREAM_EVENTS.TOOL_START,
                   tool: event.name,
-                  input: (event.data as { input?: unknown }).input,
+                  input: event.data?.input,
                 })
-              }
-
-              if (event.event === 'on_tool_end') {
-                const output = (event.data as { output?: unknown }).output
-                send(controller, {
-                  type: 'tool_end',
+              } else if (event.event === 'on_tool_end') {
+                const output = event.data?.output
+                send({
+                  type: AGENT_STREAM_EVENTS.TOOL_END,
                   tool: event.name,
                   output: typeof output === 'string' ? output : JSON.stringify(output),
                 })
               }
-
-              if (event.event === 'on_chat_model_start') {
-                send(controller, { type: 'thinking', message: 'Agent is thinking...' })
-              }
             }
 
             await saveAssistantMessage(chat.chatId, fullResponse)
-
-            controller.enqueue(encoder.encode('data: [DONE]\n\n'))
-            controller.close()
           } catch (error) {
-            // Persist whatever we have so the chat history isn't left blank.
             if (fullResponse) {
               try {
                 await saveAssistantMessage(chat.chatId, fullResponse)
@@ -123,15 +117,13 @@ export async function POST(req: NextRequest) {
               }
             }
 
-            const aborted = req.signal.aborted
-            if (!aborted) {
+            if (!req.signal.aborted) {
               const message = error instanceof Error ? error.message : 'Stream failed'
               console.error('Agent stream error:', error)
-              send(controller, { type: 'error', message })
+              send({ type: AGENT_STREAM_EVENTS.ERROR, message })
             }
-
-            controller.enqueue(encoder.encode('data: [DONE]\n\n'))
-            controller.close()
+          } finally {
+            finalize()
           }
         },
       })
