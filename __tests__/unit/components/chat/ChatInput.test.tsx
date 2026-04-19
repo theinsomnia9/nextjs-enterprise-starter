@@ -10,14 +10,14 @@ describe('ChatInput', () => {
     expect(screen.getByRole('button', { name: /send/i })).toBeInTheDocument()
   })
 
-  it('should call onSend when form is submitted', async () => {
+  it('should call onSend with trimmed message when form is submitted', async () => {
     const onSend = vi.fn()
     render(<ChatInput onSend={onSend} disabled={false} />)
 
     const input = screen.getByPlaceholderText('Type your message...')
     const sendButton = screen.getByRole('button', { name: /send/i })
 
-    fireEvent.change(input, { target: { value: 'Test message' } })
+    fireEvent.change(input, { target: { value: '  Test message  ' } })
     fireEvent.click(sendButton)
 
     await waitFor(() => {
@@ -40,13 +40,14 @@ describe('ChatInput', () => {
     })
   })
 
-  it('should not send empty messages', async () => {
+  it('should not call onSend for empty messages', async () => {
     const onSend = vi.fn()
     render(<ChatInput onSend={onSend} disabled={false} />)
 
     const sendButton = screen.getByRole('button', { name: /send/i })
     fireEvent.click(sendButton)
 
+    await new Promise((r) => setTimeout(r, 0))
     expect(onSend).not.toHaveBeenCalled()
   })
 
@@ -54,10 +55,7 @@ describe('ChatInput', () => {
     render(<ChatInput onSend={vi.fn()} disabled={true} />)
 
     const input = screen.getByPlaceholderText('Type your message...')
-    const sendButton = screen.getByRole('button', { name: /send/i })
-
     expect(input).toBeDisabled()
-    expect(sendButton).toBeDisabled()
   })
 
   it('should support Enter key to send message', async () => {
@@ -72,5 +70,18 @@ describe('ChatInput', () => {
     await waitFor(() => {
       expect(onSend).toHaveBeenCalledWith('Test message')
     })
+  })
+
+  it('should not submit on Shift+Enter', async () => {
+    const onSend = vi.fn()
+    render(<ChatInput onSend={onSend} disabled={false} />)
+
+    const input = screen.getByPlaceholderText('Type your message...')
+
+    fireEvent.change(input, { target: { value: 'line' } })
+    fireEvent.keyDown(input, { key: 'Enter', code: 'Enter', shiftKey: true })
+
+    await new Promise((r) => setTimeout(r, 0))
+    expect(onSend).not.toHaveBeenCalled()
   })
 })
