@@ -1,6 +1,5 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import { useApprovalEvents } from '@/lib/sse/useApprovalEvents'
 
 export type StatusCounts = {
@@ -11,7 +10,7 @@ export type StatusCounts = {
 }
 
 interface ApprovalPipelineProps {
-  initialCounts: StatusCounts
+  counts: StatusCounts
   onRefresh?: () => void
 }
 
@@ -24,13 +23,7 @@ const STAGE_COLORS: Record<keyof StatusCounts, string> = {
   REJECTED: 'hsl(var(--status-rejected))',
 }
 
-export function ApprovalPipeline({ initialCounts, onRefresh }: ApprovalPipelineProps) {
-  const [counts, setCounts] = useState<StatusCounts>(initialCounts)
-
-  useEffect(() => {
-    setCounts(initialCounts)
-  }, [initialCounts])
-
+export function ApprovalPipeline({ counts, onRefresh }: ApprovalPipelineProps) {
   useApprovalEvents({ onRefresh })
 
   return (

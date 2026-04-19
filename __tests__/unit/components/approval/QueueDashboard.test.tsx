@@ -3,9 +3,9 @@ import { render, screen } from '../../../setup/test-utils'
 import { QueueDashboard } from '@/components/approval/QueueDashboard'
 
 vi.mock('@/components/approval/ApprovalPipeline', () => ({
-  ApprovalPipeline: ({ initialCounts }: { initialCounts: Record<string, number> }) => (
+  ApprovalPipeline: ({ counts }: { counts: Record<string, number> }) => (
     <div data-testid="approval-pipeline">
-      <span>{initialCounts.PENDING}</span>
+      <span>{counts.PENDING}</span>
     </div>
   ),
 }))

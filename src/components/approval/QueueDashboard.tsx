@@ -49,7 +49,7 @@ export function QueueDashboard({
 
   return (
     <div data-testid="queue-dashboard" className="flex flex-col gap-6 p-4">
-      <ApprovalPipeline initialCounts={counts} onRefresh={onRefresh} />
+      <ApprovalPipeline counts={counts} onRefresh={onRefresh} />
 
       <div className="flex flex-col gap-2">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">

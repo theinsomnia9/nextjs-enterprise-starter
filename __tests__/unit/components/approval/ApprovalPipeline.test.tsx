@@ -32,20 +32,20 @@ describe('ApprovalPipeline', () => {
   })
 
   it('renders the pipeline container', () => {
-    render(<ApprovalPipeline initialCounts={mockCounts} />)
+    render(<ApprovalPipeline counts={mockCounts} />)
     expect(screen.getByTestId('approval-pipeline')).toBeDefined()
   })
 
   it('renders PENDING, REVIEWING, APPROVED, REJECTED stage labels', () => {
-    render(<ApprovalPipeline initialCounts={mockCounts} />)
+    render(<ApprovalPipeline counts={mockCounts} />)
     expect(screen.getByText('PENDING')).toBeDefined()
     expect(screen.getByText('REVIEWING')).toBeDefined()
     expect(screen.getByText('APPROVED')).toBeDefined()
     expect(screen.getByText('REJECTED')).toBeDefined()
   })
 
-  it('displays the correct count values from initialCounts', () => {
-    render(<ApprovalPipeline initialCounts={mockCounts} />)
+  it('displays the correct count values', () => {
+    render(<ApprovalPipeline counts={mockCounts} />)
     expect(screen.getByText('3')).toBeDefined()
     expect(screen.getByText('1')).toBeDefined()
     expect(screen.getByText('12')).toBeDefined()
@@ -53,12 +53,12 @@ describe('ApprovalPipeline', () => {
   })
 
   it('connects to /api/sse/approvals on mount', () => {
-    render(<ApprovalPipeline initialCounts={mockCounts} />)
+    render(<ApprovalPipeline counts={mockCounts} />)
     expect(global.EventSource).toHaveBeenCalledWith('/api/sse/approvals')
   })
 
   it('closes the EventSource on unmount', () => {
-    const { unmount } = render(<ApprovalPipeline initialCounts={mockCounts} />)
+    const { unmount } = render(<ApprovalPipeline counts={mockCounts} />)
     expect(lastEventSource).not.toBeNull()
     const closeSpy = vi.spyOn(lastEventSource!, 'close')
     unmount()
@@ -74,7 +74,7 @@ describe('ApprovalPipeline', () => {
     'queue:counts',
   ])('calls onRefresh when named event "%s" is received', async (eventName) => {
     const onRefresh = vi.fn()
-    render(<ApprovalPipeline initialCounts={mockCounts} onRefresh={onRefresh} />)
+    render(<ApprovalPipeline counts={mockCounts} onRefresh={onRefresh} />)
 
     expect(lastEventSource).not.toBeNull()
 
@@ -87,7 +87,7 @@ describe('ApprovalPipeline', () => {
 
   it('does NOT call onRefresh for unknown event types', async () => {
     const onRefresh = vi.fn()
-    render(<ApprovalPipeline initialCounts={mockCounts} onRefresh={onRefresh} />)
+    render(<ApprovalPipeline counts={mockCounts} onRefresh={onRefresh} />)
 
     await act(async () => {
       lastEventSource!.simulateEvent('some:unknown:event', { requestId: 'test-id' })
@@ -96,18 +96,18 @@ describe('ApprovalPipeline', () => {
     expect(onRefresh).not.toHaveBeenCalled()
   })
 
-  it('updates displayed counts when initialCounts prop changes', () => {
-    const { rerender } = render(<ApprovalPipeline initialCounts={mockCounts} />)
+  it('updates displayed counts when counts prop changes', () => {
+    const { rerender } = render(<ApprovalPipeline counts={mockCounts} />)
     expect(screen.getByText('3')).toBeDefined()
 
     rerender(
-      <ApprovalPipeline initialCounts={{ PENDING: 99, REVIEWING: 1, APPROVED: 12, REJECTED: 2 }} />
+      <ApprovalPipeline counts={{ PENDING: 99, REVIEWING: 1, APPROVED: 12, REJECTED: 2 }} />
     )
     expect(screen.getByText('99')).toBeDefined()
   })
 
   it('does not crash when onRefresh is not provided and an SSE event fires', async () => {
-    render(<ApprovalPipeline initialCounts={mockCounts} />)
+    render(<ApprovalPipeline counts={mockCounts} />)
 
     await expect(
       act(async () => {
