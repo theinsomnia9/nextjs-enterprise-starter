@@ -33,7 +33,7 @@ describe('QueueClient', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('applies optimistic lock and calls lockAction', async () => {
-    vi.mocked(lockAction).mockResolvedValue({ ok: true, data: {} })
+    vi.mocked(lockAction).mockResolvedValue({ ok: true, data: {} as never })
     render(
       <QueueClient
         initialRequests={[makeRequest()]}
@@ -46,7 +46,7 @@ describe('QueueClient', () => {
   })
 
   it('removes a request from the list after successful approve', async () => {
-    vi.mocked(approveAction).mockResolvedValue({ ok: true, data: {} })
+    vi.mocked(approveAction).mockResolvedValue({ ok: true, data: {} as never })
     render(
       <QueueClient
         initialRequests={[makeRequest({ status: 'REVIEWING', assignee: { id: 'u1', name: 'Me', email: null }, lockExpiresAt: new Date(Date.now() + 60000).toISOString() })]}
