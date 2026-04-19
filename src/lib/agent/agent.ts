@@ -1,8 +1,7 @@
 import { ChatOpenAI } from '@langchain/openai'
-import { Calculator } from '@langchain/community/tools/calculator'
-import { createReactAgent } from '@langchain/langgraph/prebuilt'
-import { MemorySaver } from '@langchain/langgraph-checkpoint'
-import { tool } from '@langchain/core/tools'
+import { createAgent, tool } from 'langchain'
+import { MemorySaver } from '@langchain/langgraph'
+import { evaluate } from 'mathjs'
 import { z } from 'zod'
 import { tavily } from '@tavily/core'
 
@@ -11,7 +10,7 @@ export interface AgentConfig {
   temperature?: number
 }
 
-export type CompiledAgent = ReturnType<typeof createReactAgent>
+export type CompiledAgent = ReturnType<typeof createAgent>
 
 const SYSTEM_PROMPT = [
   'You are a helpful assistant with access to two tools:',
@@ -24,12 +23,12 @@ let agentSingleton: CompiledAgent | null = null
 
 export function getAgent(): CompiledAgent {
   if (!agentSingleton) {
-    agentSingleton = createAgent()
+    agentSingleton = buildAgent()
   }
   return agentSingleton
 }
 
-export function createAgent(config: AgentConfig = {}): CompiledAgent {
+export function buildAgent(config: AgentConfig = {}): CompiledAgent {
   const openAIApiKey = process.env.OPENAI_API_KEY
   const tavilyApiKey = process.env.TAVILY_API_KEY
 
@@ -67,14 +66,29 @@ export function createAgent(config: AgentConfig = {}): CompiledAgent {
     }
   )
 
-  const tools = [tavilySearch, new Calculator()]
+  const calculator = tool(
+    async ({ expression }: { expression: string }) => {
+      try {
+        return String(evaluate(expression))
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'invalid expression'
+        return `calculator failed: ${message}`
+      }
+    },
+    {
+      name: 'calculator',
+      description:
+        'Evaluate a mathematical expression. Input should be a single expression such as "2 + 2 * 3" or "sqrt(16)".',
+      schema: z.object({
+        expression: z.string().describe('A valid math expression to evaluate'),
+      }),
+    }
+  )
 
-  const checkpointer = new MemorySaver()
-
-  return createReactAgent({
-    llm: model,
-    tools,
-    checkpointSaver: checkpointer,
-    prompt: SYSTEM_PROMPT,
+  return createAgent({
+    model,
+    tools: [tavilySearch, calculator],
+    checkpointer: new MemorySaver(),
+    systemPrompt: SYSTEM_PROMPT,
   })
 }

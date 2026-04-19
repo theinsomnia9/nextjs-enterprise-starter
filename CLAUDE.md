@@ -68,7 +68,7 @@ Always inject repository into service via constructor for testability. Route han
 
 ### AI Agent
 
-`src/lib/agent/agent.ts` creates a LangGraph ReAct agent with GPT-4o-mini, a Tavily web search tool, and a Calculator tool. Uses `MemorySaver` (in-memory, resets on server restart). For production persistence, swap to `@langchain/langgraph-checkpoint-postgres`. The agent is a module-level singleton via `getAgent()`.
+`src/lib/agent/agent.ts` builds a tool-calling agent via `createAgent` from the `langchain` package (v1), with GPT-4o-mini, a Tavily web search tool, and a `mathjs`-backed calculator tool (both defined with the `tool()` factory). Uses `MemorySaver` from `@langchain/langgraph` (in-memory, resets on server restart). For production persistence, swap to `@langchain/langgraph-checkpoint-postgres`. The agent is a module-level singleton via `getAgent()`.
 
 Chat streaming uses two routes:
 - `src/app/api/chat/route.ts` — simple OpenAI streaming (Vercel AI SDK)
