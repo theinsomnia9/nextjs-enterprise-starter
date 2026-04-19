@@ -23,6 +23,7 @@ This replaces NextAuth v5 entirely. The codebase gains ~300-500 lines of auth pl
 - Production-grade defaults: encrypted session cookies, PKCE, CSRF state, HttpOnly/Secure/SameSite cookies, no dev fallbacks.
 - Testable in isolation — unit tests without hitting Entra, integration tests with mocked Entra (MSW), Playwright E2E with pre-baked session cookies.
 - Zero client-side MSAL: browser never holds tokens. All token handling is server-side.
+- Client components can still gate UI by role via a typed `useSession()` hook populated by a server component at the layout level. Client-side role checks are UX hints only; authoritative enforcement is always `requireRole()` in the Server Action.
 
 ## Non-Goals
 
@@ -124,6 +125,10 @@ src/app/auth/
 └── unauthorized/page.tsx
 
 src/middleware.ts           (new; runs on Edge)
+
+src/components/auth/
+├── session-provider.tsx    (client component; React Context for { userId, roles, name, photoUrl })
+└── use-session.ts          (client hook: useSession() → { userId, roles, ... })
 
 __tests__/helpers/
 ├── mockActor.ts             (extend: accept roles)
@@ -232,6 +237,25 @@ type SessionPayload = {
 
 On every Server Action / authenticated route handler, `getActor()` inspects `now - iat`. If it exceeds 6h (halfway through the 12h life), `getActor()` re-encodes the payload with a fresh 12h `exp` and calls `cookies().set('session', …)` directly — supported in Server Actions and Route Handlers in Next.js App Router. Middleware does not refresh (Edge runtime + stateless). Idle users time out at 12h; active users stay in indefinitely (up to revocation constraints).
 
+### Server → client session handoff (no client-side auth library)
+
+The browser never holds tokens — but client components still need to know the user's role for UI gating (e.g., hide the "Approve" button from Requesters). The pattern:
+
+1. The protected layout (`src/app/(protected)/layout.tsx`, server component) calls `await getActor()` which reads and decrypts the HttpOnly session cookie.
+2. The layout renders a `<SessionProvider session={{ userId, roles, name, photoUrl }}>` client component wrapping its children.
+3. Any client component calls `useSession()` to read role info and conditionally render UI.
+
+Only non-secret *facts* cross the boundary — never tokens. The data shape mirrors what's already in the JWE cookie payload minus `entraOid` (not needed on the client) and minus `iat`/`exp` (server-only concern).
+
+**Authoritative vs cosmetic:**
+- Client-side `useSession()` role checks are **cosmetic UX hints**. A user can inspect-and-tamper the client bundle to reveal hidden buttons; that's expected.
+- Every Server Action that performs a gated verb calls `await requireRole('Approver')` server-side. This is the authoritative check. Even if the client tricks itself into showing the button, the server refuses.
+
+Why no `@azure/msal-browser` / `@azure/msal-react`:
+- We don't make Graph calls from the browser — Graph is called once, server-side, during `/auth/callback`.
+- We don't need token acquisition in the browser; HttpOnly cookies carry the session automatically to Server Actions.
+- Adding a browser MSAL client would reintroduce the XSS-exposed-token problem we just avoided.
+
 ### Sign-out — `POST /auth/signout`
 
 1. Clear `session` cookie (Max-Age=0).
@@ -287,6 +311,7 @@ All auth events wrapped in `createSpan('auth.<event>', …)` — e.g., `auth.sig
 | `cookies.ts` | Cookie options correct; `returnTo` validation rejects `//evil`, `http://evil`, `javascript:`; accepts `/approvals/123`. |
 | `actor.ts` | Returns `{ id, roles }` for valid session; throws `UNAUTHORIZED` when cookie absent or invalid. |
 | `graph.ts` | Fetches `/me/photo/$value`; 200 → data URI; 404 → null; 401/5xx → null + log. MSW-based. |
+| `session-provider.tsx` / `use-session.ts` | `useSession()` returns the provided session; throws if called outside a `SessionProvider`; renders `null`-safe defaults when session is missing in stories. |
 
 ### Integration (`__tests__/integration/`, real test DB on port 5433)
 
