@@ -4,6 +4,7 @@ export enum ErrorCode {
   LOCKED_BY_OTHER = 'LOCKED_BY_OTHER',
   VALIDATION_ERROR = 'VALIDATION_ERROR',
   UNAUTHORIZED = 'UNAUTHORIZED',
+  FORBIDDEN = 'FORBIDDEN',
   INTERNAL_ERROR = 'INTERNAL_ERROR',
 }
 
@@ -73,4 +74,12 @@ export const validationError = (message: string, details?: Record<string, unknow
     code: ErrorCode.VALIDATION_ERROR,
     message,
     details,
+  })
+
+export const forbidden = (requiredRoles: string[]) =>
+  new AppError({
+    statusCode: 403,
+    code: ErrorCode.FORBIDDEN,
+    message: `Requires role: ${requiredRoles.join(' or ')}`,
+    details: { requiredRoles },
   })
