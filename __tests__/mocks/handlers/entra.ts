@@ -40,7 +40,7 @@ export function entraHandlers(overrides: MockTokenOverrides = {}) {
         id_token: buildIdToken(claims),
       })
     }),
-    http.get('https://graph.microsoft.com/v1.0/me/photo/*', () =>
+    http.get('https://graph.microsoft.com/v1.0/me/photos/*', () =>
       HttpResponse.arrayBuffer(new Uint8Array([0xff, 0xd8, 0xff]).buffer, {
         status: 200,
         headers: { 'content-type': 'image/jpeg' },

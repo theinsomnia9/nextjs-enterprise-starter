@@ -1,4 +1,7 @@
-const GRAPH_PHOTO_URL = 'https://graph.microsoft.com/v1.0/me/photo/$value'
+// 48x48 thumbnail — full-res (/me/photo/$value) can exceed the 4KB session cookie
+// budget once base64-encoded. The 48x48 size is the smallest Entra serves and is
+// sufficient for avatar chrome.
+const GRAPH_PHOTO_URL = 'https://graph.microsoft.com/v1.0/me/photos/48x48/$value'
 
 export async function fetchUserPhoto(accessToken: string): Promise<string | null> {
   try {
