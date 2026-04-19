@@ -59,16 +59,22 @@ export async function POST(req: NextRequest) {
       const encoder = new TextEncoder()
       let fullResponse = ''
 
+      const send = (controller: ReadableStreamDefaultController, payload: unknown) => {
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`))
+      }
+
       const readableStream = new ReadableStream({
         async start(controller) {
           try {
-            controller.enqueue(
-              encoder.encode(`data: ${JSON.stringify({ chatId: chat.chatId })}\n\n`)
-            )
+            send(controller, { chatId: chat.chatId })
 
             const eventStream = agent.streamEvents(
               { messages: langChainMessages },
-              { version: 'v2', configurable: { thread_id: conversationThreadId } }
+              {
+                version: 'v2',
+                configurable: { thread_id: conversationThreadId },
+                signal: req.signal,
+              }
             )
 
             for await (const event of eventStream) {
@@ -76,43 +82,29 @@ export async function POST(req: NextRequest) {
                 const content = event.data?.chunk?.content
                 if (content) {
                   fullResponse += content
-                  controller.enqueue(
-                    encoder.encode(`data: ${JSON.stringify({ type: 'token', content })}\n\n`)
-                  )
+                  send(controller, { type: 'token', content })
                 }
               }
 
               if (event.event === 'on_tool_start') {
-                controller.enqueue(
-                  encoder.encode(
-                    `data: ${JSON.stringify({
-                      type: 'tool_start',
-                      tool: event.name,
-                      input: (event.data as { input?: unknown }).input,
-                    })}\n\n`
-                  )
-                )
+                send(controller, {
+                  type: 'tool_start',
+                  tool: event.name,
+                  input: (event.data as { input?: unknown }).input,
+                })
               }
 
               if (event.event === 'on_tool_end') {
                 const output = (event.data as { output?: unknown }).output
-                controller.enqueue(
-                  encoder.encode(
-                    `data: ${JSON.stringify({
-                      type: 'tool_end',
-                      tool: event.name,
-                      output: typeof output === 'string' ? output : JSON.stringify(output),
-                    })}\n\n`
-                  )
-                )
+                send(controller, {
+                  type: 'tool_end',
+                  tool: event.name,
+                  output: typeof output === 'string' ? output : JSON.stringify(output),
+                })
               }
 
               if (event.event === 'on_chain_start' && event.name === 'agent') {
-                controller.enqueue(
-                  encoder.encode(
-                    `data: ${JSON.stringify({ type: 'thinking', message: 'Agent is thinking...' })}\n\n`
-                  )
-                )
+                send(controller, { type: 'thinking', message: 'Agent is thinking...' })
               }
             }
 
@@ -121,7 +113,24 @@ export async function POST(req: NextRequest) {
             controller.enqueue(encoder.encode('data: [DONE]\n\n'))
             controller.close()
           } catch (error) {
-            controller.error(error)
+            // Persist whatever we have so the chat history isn't left blank.
+            if (fullResponse) {
+              try {
+                await saveAssistantMessage(chat.chatId, fullResponse)
+              } catch (saveError) {
+                console.error('Failed to persist partial assistant message:', saveError)
+              }
+            }
+
+            const aborted = req.signal.aborted
+            if (!aborted) {
+              const message = error instanceof Error ? error.message : 'Stream failed'
+              console.error('Agent stream error:', error)
+              send(controller, { type: 'error', message })
+            }
+
+            controller.enqueue(encoder.encode('data: [DONE]\n\n'))
+            controller.close()
           }
         },
       })
