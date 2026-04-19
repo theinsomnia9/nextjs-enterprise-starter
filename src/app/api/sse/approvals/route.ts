@@ -1,55 +1,36 @@
-import { addClient, removeClient } from '@/lib/approvals/sseServer'
+import { addClient, removeClient, type SSEClient } from '@/lib/approvals/sseServer'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(): Promise<Response> {
-  const encoder = new TextEncoder()
-  let writer: WritableStreamDefaultWriter<string>
-  let keepAliveInterval: NodeJS.Timeout
+  let client: SSEClient | null = null
+  let keepAlive: NodeJS.Timeout | null = null
 
-  const stream = new ReadableStream({
+  const stream = new ReadableStream<Uint8Array>({
     start(controller) {
-      writer = {
-        write: (chunk: string) => {
-          controller.enqueue(encoder.encode(chunk))
-          return Promise.resolve()
-        },
-        close: () => {
-          controller.close()
-          return Promise.resolve()
-        },
-        releaseLock: () => {},
-        closed: Promise.resolve(undefined),
-        desiredSize: 1,
-        ready: Promise.resolve(undefined),
-        abort: () => Promise.resolve(),
-      } as WritableStreamDefaultWriter<string>
+      const encoder = new TextEncoder()
+      client = { controller, encoder }
+      addClient(client)
 
-      // Add client to the broadcast list
-      addClient(writer)
+      controller.enqueue(
+        encoder.encode(
+          `event: connected\ndata: ${JSON.stringify({ message: 'Connected to approval events' })}\n\n`
+        )
+      )
 
-      // Send initial connection message
-      const connectMessage = `event: connected\ndata: ${JSON.stringify({ message: 'Connected to approval events' })}\n\n`
-      controller.enqueue(encoder.encode(connectMessage))
-
-      // Keep-alive ping every 30 seconds to prevent connection timeout
-      keepAliveInterval = setInterval(() => {
+      keepAlive = setInterval(() => {
         try {
           controller.enqueue(encoder.encode(':ping\n\n'))
         } catch {
-          // Connection closed, clean up
-          clearInterval(keepAliveInterval)
-          removeClient(writer)
+          if (keepAlive) clearInterval(keepAlive)
+          if (client) removeClient(client)
         }
       }, 30000)
     },
 
     cancel() {
-      // Client disconnected - clean up
-      clearInterval(keepAliveInterval)
-      if (writer) {
-        removeClient(writer)
-      }
+      if (keepAlive) clearInterval(keepAlive)
+      if (client) removeClient(client)
     },
   })
 
