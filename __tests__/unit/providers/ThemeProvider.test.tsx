@@ -3,21 +3,17 @@ import { useContext, createContext } from 'react'
 import { render, screen, fireEvent, renderHook, waitFor } from '../../setup/test-utils'
 import { ThemeProvider, useTheme } from '@/providers/ThemeProvider'
 
-// A consumer that gracefully handles the unmounted phase
+// A consumer rendered inside ThemeProvider — hook is always available here
 function SafeThemeConsumer({ testId = 'theme-value' }: { testId?: string }) {
-  try {
-    const { theme, toggleTheme, setTheme } = useTheme()
-    return (
-      <div>
-        <span data-testid={testId}>{theme}</span>
-        <button onClick={toggleTheme}>Toggle</button>
-        <button onClick={() => setTheme('dark')}>Set Dark</button>
-        <button onClick={() => setTheme('light')}>Set Light</button>
-      </div>
-    )
-  } catch {
-    return <div data-testid="unmounted">Loading</div>
-  }
+  const { theme, toggleTheme, setTheme } = useTheme()
+  return (
+    <div>
+      <span data-testid={testId}>{theme}</span>
+      <button onClick={toggleTheme}>Toggle</button>
+      <button onClick={() => setTheme('dark')}>Set Dark</button>
+      <button onClick={() => setTheme('light')}>Set Light</button>
+    </div>
+  )
 }
 
 describe('ThemeProvider', () => {
