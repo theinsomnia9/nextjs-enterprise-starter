@@ -13,3 +13,25 @@ export const rejectApprovalSchema = z.object({
 
 export type CreateApprovalInput = z.infer<typeof createApprovalSchema>
 export type RejectApprovalInput = z.infer<typeof rejectApprovalSchema>
+
+export const lockSchema = z.object({
+  requestId: z.string().min(1, 'Request ID is required'),
+})
+
+export const releaseSchema = z.object({
+  requestId: z.string().min(1, 'Request ID is required'),
+})
+
+export const approveSchema = z.object({
+  requestId: z.string().min(1, 'Request ID is required'),
+})
+
+export const rejectSchema = z.object({
+  requestId: z.string().min(1, 'Request ID is required'),
+  reason: z.string().min(1, 'Rejection reason is required').max(1000),
+})
+
+export type LockInput = z.infer<typeof lockSchema>
+export type ReleaseInput = z.infer<typeof releaseSchema>
+export type ApproveInput = z.infer<typeof approveSchema>
+export type RejectInput = z.infer<typeof rejectSchema>
