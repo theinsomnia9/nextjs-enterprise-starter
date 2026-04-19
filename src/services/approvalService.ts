@@ -78,6 +78,27 @@ export class ApprovalService {
     return { requests: scored, total: scored.length, counts, configs }
   }
 
+  async getRequestWithScore(id: string) {
+    const { requests, configs } = await this.getQueueWithConfigs()
+    const queued = requests.find((r) => r.id === id)
+    if (queued) {
+      return {
+        ...queued,
+        priorityScore: calculatePriorityScore(queued.submittedAt, queued.config),
+      }
+    }
+
+    const request = await this.getRequest(id)
+    const configMap = new Map<string, PriorityConfigValues>(
+      configs.map((c) => [c.category as string, c as PriorityConfigValues])
+    )
+    const fallbackConfig = configMap.get(request.category) ?? DEFAULT_PRIORITY_CONFIG
+    return {
+      ...request,
+      priorityScore: calculatePriorityScore(request.submittedAt, fallbackConfig),
+    }
+  }
+
   async createApproval(data: Prisma.ApprovalRequestCreateInput) {
     try {
       return await this.repo.create(data)
