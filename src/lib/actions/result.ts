@@ -47,7 +47,7 @@ export async function wrapAction<T>(
 
     try {
       const data = await fn(actor)
-      return { ok: true, data } as ActionResult<T>
+      return { ok: true, data } satisfies ActionResult<T>
     } catch (err) {
       if (err instanceof ZodError) {
         return {
@@ -57,18 +57,23 @@ export async function wrapAction<T>(
             message: 'Invalid input',
             fields: zodFields(err),
           },
-        } as ActionResult<T>
+        } satisfies ActionResult<T>
       }
       if (err instanceof AppError) {
-        return { ok: false, error: { code: err.code, message: err.message } } as ActionResult<T>
+        return {
+          ok: false,
+          error: { code: err.code, message: err.message },
+        } satisfies ActionResult<T>
       }
-      console.error(`[action.${actionName}] unexpected error`, err, {
+      console.error({
+        action: actionName,
         actorId: actor.id,
+        err: err instanceof Error ? { message: err.message, stack: err.stack } : String(err),
       })
       return {
         ok: false,
         error: { code: 'INTERNAL', message: 'Something went wrong' },
-      } as ActionResult<T>
+      } satisfies ActionResult<T>
     }
   })
 }
