@@ -4,7 +4,6 @@ import type { ApprovalRequest, PriorityConfig, Prisma } from '@prisma/client'
 type UserSelect = { id: string; name: string | null; email: string | null }
 type WithRequester = ApprovalRequest & { requester: UserSelect }
 type WithRequesterAndAssignee = WithRequester & { assignee: UserSelect | null }
-type WithRequesterAndApprovedBy = WithRequester & { approvedBy: UserSelect | null }
 
 export interface IApprovalRepository {
   findById(id: string): Promise<WithRequesterAndAssignee | null>
@@ -12,8 +11,6 @@ export interface IApprovalRepository {
   create(data: Prisma.ApprovalRequestCreateInput): Promise<WithRequester>
   lock(id: string, reviewerId: string, lockExpiresAt: Date): Promise<WithRequesterAndAssignee>
   release(id: string): Promise<WithRequester>
-  approve(id: string, approverId: string): Promise<WithRequesterAndApprovedBy>
-  reject(id: string, rejectorId: string, reason: string): Promise<WithRequester>
   expireLocks(before: Date): Promise<{ count: number; ids: string[] }>
   getAllPriorityConfigs(): Promise<PriorityConfig[]>
 }
@@ -55,36 +52,6 @@ export class ApprovalRepository implements IApprovalRepository {
     return prisma.approvalRequest.update({
       where: { id },
       data: { assigneeId: null, status: 'PENDING', lockedAt: null, lockExpiresAt: null },
-      include: { requester: userSelect },
-    })
-  }
-
-  async approve(id: string, approverId: string) {
-    return prisma.approvalRequest.update({
-      where: { id },
-      data: {
-        status: 'APPROVED',
-        approvedById: approverId,
-        approvedAt: new Date(),
-        assigneeId: null,
-        lockedAt: null,
-        lockExpiresAt: null,
-      },
-      include: { requester: userSelect, approvedBy: userSelect },
-    })
-  }
-
-  async reject(id: string, _rejectorId: string, reason: string) {
-    return prisma.approvalRequest.update({
-      where: { id },
-      data: {
-        status: 'REJECTED',
-        rejectionReason: reason,
-        rejectedAt: new Date(),
-        assigneeId: null,
-        lockedAt: null,
-        lockExpiresAt: null,
-      },
       include: { requester: userSelect },
     })
   }
