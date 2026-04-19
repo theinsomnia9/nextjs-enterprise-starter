@@ -1,8 +1,8 @@
 'use client'
 
 import { useCallback, useState } from 'react'
+import dynamic from 'next/dynamic'
 import {
-  ReactFlow,
   MiniMap,
   Controls,
   Background,
@@ -18,6 +18,8 @@ import 'reactflow/dist/style.css'
 
 import CustomNode from './nodes/CustomNode'
 import { CustomNodeData } from './nodes/CustomNode'
+
+const ReactFlow = dynamic(() => import('reactflow').then((m) => m.default), { ssr: false })
 
 const nodeTypes = {
   custom: CustomNode,
@@ -55,7 +57,7 @@ export default function WorkflowBuilder() {
   const [nodeId, setNodeId] = useState(4)
 
   const onConnect = useCallback(
-    (params: Connection) => setEdges((eds: Edge[]) => addEdge(params, eds)),
+    (params: Connection) => setEdges((eds) => addEdge(params, eds)),
     [setEdges]
   )
 
@@ -72,22 +74,17 @@ export default function WorkflowBuilder() {
         description: 'New workflow step',
       },
     }
-    setNodes((nds: Node<CustomNodeData>[]) => [...nds, newNode])
+    setNodes((nds) => [...nds, newNode])
     setNodeId((id) => id + 1)
   }, [nodeId, setNodes])
 
   const deleteSelectedNodes = useCallback(() => {
-    setNodes((nds: Node<CustomNodeData>[]) =>
-      nds.filter((node: Node<CustomNodeData>) => !node.selected)
-    )
-    setEdges((eds: Edge[]) =>
-      eds.filter((edge: Edge) => {
-        const sourceNode = nodes.find((n: Node<CustomNodeData>) => n.id === edge.source)
-        const targetNode = nodes.find((n: Node<CustomNodeData>) => n.id === edge.target)
-        return !sourceNode?.selected && !targetNode?.selected
-      })
-    )
-  }, [setNodes, setEdges, nodes])
+    setNodes((nds) => {
+      const removed = new Set(nds.filter((n) => n.selected).map((n) => n.id))
+      setEdges((eds) => eds.filter((e) => !removed.has(e.source) && !removed.has(e.target)))
+      return nds.filter((n) => !n.selected)
+    })
+  }, [setNodes, setEdges])
 
   return (
     <div className="flex h-screen w-full flex-col">
