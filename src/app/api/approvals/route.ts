@@ -1,40 +1,27 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { createSpan } from '@/lib/telemetry/tracing'
+import { NextResponse } from 'next/server'
+import { withApi } from '@/lib/api/withApi'
 import { broadcastApprovalEvent } from '@/lib/approvals/sseServer'
 import { createApprovalSchema } from '@/lib/approvals/schemas'
 import { approvalService } from '@/services/approvalService'
-import { handleApiError } from '@/lib/errors/handler'
 import { validationError } from '@/lib/errors/AppError'
 
-export async function POST(req: NextRequest) {
-  return createSpan('approvals.submit', async () => {
-    const body = await req.json()
-    const parsed = createApprovalSchema.safeParse(body)
-    if (!parsed.success) throw validationError(parsed.error.errors[0].message)
+export const POST = withApi('approvals.submit', async (req) => {
+  const body = await req.json()
+  const parsed = createApprovalSchema.safeParse(body)
+  if (!parsed.success) throw validationError(parsed.error.errors[0].message)
 
-    try {
-      const request = await approvalService.createApproval({
-        title: parsed.data.title,
-        description: parsed.data.description,
-        category: parsed.data.category,
-        requester: { connect: { id: parsed.data.requesterId } },
-      })
+  const request = await approvalService.createApproval({
+    title: parsed.data.title,
+    description: parsed.data.description,
+    category: parsed.data.category,
+    requester: { connect: { id: parsed.data.requesterId } },
+  })
 
-      await broadcastApprovalEvent('request:submitted', {
-        requestId: request.id,
-        title: request.title,
-        category: request.category,
-      })
+  await broadcastApprovalEvent('request:submitted', {
+    requestId: request.id,
+    title: request.title,
+    category: request.category,
+  })
 
-      return NextResponse.json(request, { status: 201 })
-    } catch (err: unknown) {
-      const code = (err as { code?: string }).code
-      if (code === 'P2003' || code === 'P2025') {
-        throw validationError(
-          `requesterId "${parsed.data.requesterId}" does not exist. Use a seeded dev user id (e.g. dev-user-alice).`
-        )
-      }
-      throw err
-    }
-  }).catch(handleApiError)
-}
+  return NextResponse.json(request, { status: 201 })
+})

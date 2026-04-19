@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { IApprovalRepository, approvalRepository } from '@/lib/approvals/repository'
-import { notFound, alreadyResolved, lockedByOther, notCurrentReviewer } from '@/lib/errors/AppError'
+import { notFound, alreadyResolved, lockedByOther, notCurrentReviewer, validationError } from '@/lib/errors/AppError'
 import type { PriorityConfigValues } from '@/lib/approvals/types'
 import type { Prisma } from '@prisma/client'
 
@@ -55,11 +55,23 @@ export class ApprovalService {
   }
 
   async createApproval(data: Prisma.ApprovalRequestCreateInput) {
-    return this.repo.create(data)
+    try {
+      return await this.repo.create(data)
+    } catch (err: unknown) {
+      const code = (err as { code?: string }).code
+      if (code === 'P2003' || code === 'P2025') {
+        const requesterId =
+          (data.requester as { connect?: { id?: string } } | undefined)?.connect?.id ?? 'unknown'
+        throw validationError(
+          `requesterId "${requesterId}" does not exist. Use a seeded dev user id (e.g. dev-user-alice).`
+        )
+      }
+      throw err
+    }
   }
 
   async lock(id: string, reviewerId: string) {
-    const lockExpiresAt = await prisma.$transaction(async (tx) => {
+    return prisma.$transaction(async (tx) => {
       const existing = await tx.approvalRequest.findUnique({
         where: { id },
         select: { status: true, lockExpiresAt: true, assigneeId: true, category: true },
@@ -81,10 +93,17 @@ export class ApprovalService {
       }
 
       const config = await tx.priorityConfig.findUnique({ where: { category: existing.category } })
-      return new Date(Date.now() + (config?.lockTimeoutMinutes ?? 5) * 60 * 1000)
-    })
+      const lockExpiresAt = new Date(Date.now() + (config?.lockTimeoutMinutes ?? 5) * 60 * 1000)
 
-    return this.repo.lock(id, reviewerId, lockExpiresAt)
+      return tx.approvalRequest.update({
+        where: { id },
+        data: { assigneeId: reviewerId, status: 'REVIEWING', lockedAt: new Date(), lockExpiresAt },
+        include: {
+          requester: { select: { id: true, name: true, email: true } },
+          assignee: { select: { id: true, name: true, email: true } },
+        },
+      })
+    })
   }
 
   async release(id: string, reviewerId: string) {

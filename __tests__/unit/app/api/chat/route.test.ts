@@ -23,6 +23,9 @@ vi.mock('@/lib/telemetry/tracing', () => ({
   createSpan: vi.fn((_name: string, fn: (span: unknown) => unknown) =>
     fn({ setAttributes: vi.fn(), setStatus: vi.fn(), recordException: vi.fn(), end: vi.fn() })
   ),
+  addSpanAttribute: vi.fn(),
+  addSpanEvent: vi.fn(),
+  getCurrentSpan: vi.fn(),
 }))
 
 import { POST } from '@/app/api/chat/route'
@@ -35,7 +38,7 @@ describe('POST /api/chat', () => {
       body: JSON.stringify({ chatId: null }),
     })
 
-    const response = await POST(request as never)
+    const response = await POST(request, { params: Promise.resolve({}) })
 
     expect(response.status).toBe(400)
     const data = await response.json()
@@ -49,7 +52,7 @@ describe('POST /api/chat', () => {
       body: JSON.stringify({ message: '', chatId: null }),
     })
 
-    const response = await POST(request as never)
+    const response = await POST(request, { params: Promise.resolve({}) })
 
     expect(response.status).toBe(400)
     const data = await response.json()
@@ -66,7 +69,7 @@ describe('POST /api/chat', () => {
       body: JSON.stringify({ message: 'Hello', chatId: null }),
     })
 
-    const response = await POST(request as never)
+    const response = await POST(request, { params: Promise.resolve({}) })
 
     expect(response.status).toBe(500)
     const data = await response.json()

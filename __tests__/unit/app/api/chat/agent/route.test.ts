@@ -23,7 +23,7 @@ describe('POST /api/chat/agent', () => {
       body: JSON.stringify({ chatId: null }),
     })
 
-    const response = await POST(request)
+    const response = await POST(request, { params: Promise.resolve({}) })
 
     expect(response.status).toBe(400)
     const data = await response.json()
@@ -37,7 +37,7 @@ describe('POST /api/chat/agent', () => {
       body: JSON.stringify({ message: '', chatId: null }),
     })
 
-    const response = await POST(request)
+    const response = await POST(request, { params: Promise.resolve({}) })
 
     expect(response.status).toBe(400)
     const data = await response.json()
@@ -54,7 +54,7 @@ describe('POST /api/chat/agent', () => {
       body: JSON.stringify({ message: 'Hello', chatId: null }),
     })
 
-    const response = await POST(request)
+    const response = await POST(request, { params: Promise.resolve({}) })
 
     expect(response.status).toBe(500)
     const data = await response.json()
@@ -71,7 +71,7 @@ describe('POST /api/chat/agent', () => {
       body: JSON.stringify({ message: 'Hello', chatId: null }),
     })
 
-    const response = await POST(request)
+    const response = await POST(request, { params: Promise.resolve({}) })
 
     expect(response.status).toBe(500)
     const data = await response.json()
