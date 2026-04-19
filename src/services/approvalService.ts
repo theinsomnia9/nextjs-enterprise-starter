@@ -59,7 +59,7 @@ export class ApprovalService {
   }
 
   async lock(id: string, reviewerId: string) {
-    const lockExpiresAt = await prisma.$transaction(async (tx) => {
+    return prisma.$transaction(async (tx) => {
       const existing = await tx.approvalRequest.findUnique({
         where: { id },
         select: { status: true, lockExpiresAt: true, assigneeId: true, category: true },
@@ -81,10 +81,17 @@ export class ApprovalService {
       }
 
       const config = await tx.priorityConfig.findUnique({ where: { category: existing.category } })
-      return new Date(Date.now() + (config?.lockTimeoutMinutes ?? 5) * 60 * 1000)
-    })
+      const lockExpiresAt = new Date(Date.now() + (config?.lockTimeoutMinutes ?? 5) * 60 * 1000)
 
-    return this.repo.lock(id, reviewerId, lockExpiresAt)
+      return tx.approvalRequest.update({
+        where: { id },
+        data: { assigneeId: reviewerId, status: 'REVIEWING', lockedAt: new Date(), lockExpiresAt },
+        include: {
+          requester: { select: { id: true, name: true, email: true } },
+          assignee: { select: { id: true, name: true, email: true } },
+        },
+      })
+    })
   }
 
   async release(id: string, reviewerId: string) {
