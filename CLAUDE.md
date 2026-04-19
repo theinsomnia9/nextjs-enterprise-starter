@@ -33,12 +33,18 @@ npm run infra:down       # Stop all infrastructure
 
 Copy `.env.example` → `.env` and configure:
 - `DATABASE_URL` — PostgreSQL (default port 5432 via Docker)
+- `APP_URL` — Absolute app URL (e.g., `http://localhost:3000`); used to build the Entra redirect URI and validate `returnTo`
+- `AUTH_SESSION_SECRET` — ≥32-byte base64 secret; HKDF input for the JWE session key. Generate with `openssl rand -base64 32`
+- `AZURE_AD_CLIENT_ID` / `AZURE_AD_CLIENT_SECRET` / `AZURE_AD_TENANT_ID` — Entra ID app registration (single-tenant). See setup guide below
 - `OPENAI_API_KEY` — Required for chat/agent features
 - `TAVILY_API_KEY` — Required for agent web search tool
-- `NEXTAUTH_SECRET` — Random secret for session signing
-- `NEXTAUTH_URL` — App URL (`http://localhost:3000` for local)
+- `CRON_SECRET` — Protects `/api/cron/*` routes
 
-Integration tests use a separate DB on port 5433 (`DATABASE_URL_TEST` or a test-specific `.env.test`).
+Integration tests use a separate DB on port 5433 (`TEST_DATABASE_URL` or a test-specific `.env.test`).
+
+### Local Entra ID setup
+
+Auth has **no dev fallback** — every environment needs a real Entra tenant. For step-by-step instructions (create a free M365 Developer tenant, register the app, configure redirect URI, create app roles, assign users, wire env vars), see **`docs/entra-id-local-setup.md`**.
 
 ## Architecture
 
@@ -68,8 +74,21 @@ Chat streaming uses two routes:
 - `src/app/api/chat/route.ts` — simple OpenAI streaming (Vercel AI SDK)
 - `src/app/api/chat/agent/route.ts` — LangGraph agent with tool use + SSE streaming
 
+### Auth (Entra ID + MSAL Node)
+
+Microsoft Entra ID via MSAL Node (Authorization Code + PKCE, single-tenant). **No dev fallback.** Browser never holds tokens.
+
+- **Runtime split**: `src/middleware.ts` runs on Edge — decrypts the JWE session cookie with `jose`, gates every non-`/auth/*` route, and forwards the verified payload via `SESSION_HEADER` so Node-side `getActor()` / `getSessionForClient()` skip a redundant decrypt. `/auth/{signin,callback,signout}` route handlers run on Node (MSAL + Prisma + Graph).
+- **Session**: encrypted cookie (JWE), 12h TTL with sliding refresh at 6h via `getActor()` — see `src/lib/auth/session.ts`, `src/lib/auth/cookies.ts`. Secret derived via HKDF-SHA256 from `AUTH_SESSION_SECRET`.
+- **Authorization**: `authN` enforced in middleware; `authZ` enforced next to each verb. Use `await requireRole('Approver')` or `requireAnyRole(['Approver','Admin'])` from `src/lib/auth/requireRole.ts` inside services/Server Actions. Throws `AppError.forbidden()` → 403.
+- **Roles**: three canonical values in `src/lib/auth/roles.ts` — `Admin`, `Approver`, `Requester`. Missing/unknown claim defaults to `Requester`. App Role **Value** strings in the Entra portal must match these exactly.
+- **Client-side session**: protected layout calls `getActor()` server-side and passes non-secret facts (`userId`, `roles`, `name`, `photoUrl`) to `<SessionProvider>`. Client `useSession()` is for cosmetic UI gating only — authoritative enforcement is always server-side `requireRole()`.
+- **User provisioning**: `prisma.user.upsert({ where: { entraOid } })` on every callback — `entraOid` (Entra `oid` claim) is the stable identity. Profile photo fetched once via Graph `/me/photo/$value` at sign-in and cached on `User.image`.
+- **Testing**: unit tests mock MSAL + Graph via MSW (`__tests__/mocks/entra.ts`); integration tests use MSW + real test DB; E2E injects pre-baked JWE cookies via `__tests__/helpers/mockSession.ts`. No test ever hits real Entra.
+
 ### Database Schema Key Models
 
+- **User** — `entraOid` (unique) is the stable Entra identity; `id` is cuid (foreign key target for approvals). Users are provisioned on first sign-in — `prisma/seed.js` does not create users
 - **ApprovalRequest** — has `status` (PENDING/REVIEWING/APPROVED/REJECTED/CANCELLED), `assigneeId` + `lockExpiresAt` for reviewer locking, `category` (P1-P4)
 - **PriorityConfig** — per-category config for `baseWeight`, `agingFactor`, `slaHours`, `lockTimeoutMinutes`; seeded via `prisma/seed.js`
 - **Chat / Message** — persisted chat history; `Message.role` is `USER | ASSISTANT | SYSTEM`
