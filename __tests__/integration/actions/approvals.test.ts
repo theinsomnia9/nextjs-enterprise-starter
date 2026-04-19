@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, beforeEach, afterAll, vi } from 'vitest'
 import '../../helpers/mockActor'
-import { setActor } from '../../helpers/mockActor'
+import { setActor, clearActor } from '../../helpers/mockActor'
 import { spyOnBroadcast } from '../../helpers/broadcastSpy'
 import { prisma } from '@/lib/prisma'
 import { lockAction, releaseAction, approveAction, rejectAction } from '@/app/(protected)/approvals/actions'
@@ -159,5 +159,46 @@ describe('approvals Server Actions (integration)', () => {
       expect(result.error.code).toBe('VALIDATION')
       expect(result.error.fields?.reason).toBe('Rejection reason is required')
     })
+  })
+})
+
+describe('approvals authz matrix', () => {
+  beforeAll(async () => {
+    await prisma.user.upsert({ where: { id: TEST_USER.id }, create: TEST_USER, update: {} })
+  })
+
+  it('approveAction: Requester role → FORBIDDEN', async () => {
+    const req = await seedRequest()
+    await setActor(TEST_USER.id, ['Requester'])
+    const result = await approveAction(req.id)
+    expect(result.ok).toBe(false)
+    if (result.ok === false) expect(result.error.code).toBe('FORBIDDEN')
+  })
+
+  it('approveAction: Approver role → succeeds (no role error)', async () => {
+    const req = await seedRequest()
+    await setActor(TEST_USER.id, ['Approver'])
+    // Lock first so approve can proceed per service rules
+    const locked = await lockAction(req.id)
+    expect(locked.ok).toBe(true)
+    const result = await approveAction(req.id)
+    expect(result.ok).toBe(true)
+  })
+
+  it('approveAction: Admin role → succeeds (no role error)', async () => {
+    const req = await seedRequest()
+    await setActor(TEST_USER.id, ['Admin'])
+    const locked = await lockAction(req.id)
+    expect(locked.ok).toBe(true)
+    const result = await approveAction(req.id)
+    expect(result.ok).toBe(true)
+  })
+
+  it('approveAction: no session → UNAUTHORIZED', async () => {
+    const req = await seedRequest()
+    await clearActor()
+    const result = await approveAction(req.id)
+    expect(result.ok).toBe(false)
+    if (result.ok === false) expect(result.error.code).toBe('UNAUTHORIZED')
   })
 })
