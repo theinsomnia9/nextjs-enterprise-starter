@@ -58,9 +58,14 @@ export function createAgent(config: AgentConfig = {}): CompiledAgent {
 
   const tavilySearch = tool(
     async ({ query }: { query: string }) => {
-      const client = getTavilyClient(tavilyApiKey)
-      const response = await client.search(query, { maxResults: 3 })
-      return JSON.stringify(response.results)
+      try {
+        const client = getTavilyClient(tavilyApiKey)
+        const response = await client.search(query, { maxResults: 3 })
+        return JSON.stringify(response.results)
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'unknown error'
+        return JSON.stringify({ error: `tavily_search failed: ${message}` })
+      }
     },
     {
       name: 'tavily_search',

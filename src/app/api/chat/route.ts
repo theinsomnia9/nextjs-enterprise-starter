@@ -10,7 +10,14 @@ const requestSchema = z.object({
   chatId: z.string().nullable(),
 })
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+let openaiClient: OpenAI | null = null
+
+function getOpenAIClient(): OpenAI {
+  if (!openaiClient) {
+    openaiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+  }
+  return openaiClient
+}
 
 
 export async function POST(req: NextRequest) {
@@ -38,7 +45,7 @@ export async function POST(req: NextRequest) {
         content: msg.content,
       }))
 
-      const stream = await openai.chat.completions.create({
+      const stream = await getOpenAIClient().chat.completions.create({
         model: 'gpt-4o-mini',
         messages,
         stream: true,
