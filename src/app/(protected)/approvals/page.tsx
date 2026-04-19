@@ -4,10 +4,10 @@ import { useState, useEffect, useCallback } from 'react'
 import { QueueDashboard, type QueueRequest } from '@/components/approval/QueueDashboard'
 import { RejectModal } from '@/components/approval/RejectModal'
 import type { StatusCounts } from '@/components/approval/ApprovalPipeline'
-
-const CURRENT_USER_ID = 'dev-user-alice' // TODO: replace with session.user.id when auth is configured
+import { useRequiredSession } from '@/components/auth/use-session'
 
 export default function ApprovalsPage() {
+  const { userId: CURRENT_USER_ID } = useRequiredSession()
   const [requests, setRequests] = useState<QueueRequest[]>([])
   const [counts, setCounts] = useState<StatusCounts>({
     PENDING: 0,

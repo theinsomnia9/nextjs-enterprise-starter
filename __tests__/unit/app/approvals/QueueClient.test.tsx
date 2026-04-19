@@ -1,17 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { QueueClient } from '@/app/approvals/_components/QueueClient'
+import { QueueClient } from '@/app/(protected)/approvals/_components/QueueClient'
 import type { QueueRequest } from '@/components/approval/QueueDashboard'
 
-vi.mock('@/app/approvals/actions', () => ({
+vi.mock('@/app/(protected)/approvals/actions', () => ({
   lockAction: vi.fn(),
   releaseAction: vi.fn(),
   approveAction: vi.fn(),
   rejectAction: vi.fn(),
 }))
 
-const { lockAction, approveAction } = await import('@/app/approvals/actions')
+const { lockAction, approveAction } = await import('@/app/(protected)/approvals/actions')
 
 function makeRequest(overrides: Partial<QueueRequest> = {}): QueueRequest {
   return {

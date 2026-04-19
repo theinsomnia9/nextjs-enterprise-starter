@@ -3,7 +3,7 @@ import '../../helpers/mockActor'
 import { setActor } from '../../helpers/mockActor'
 import { spyOnBroadcast } from '../../helpers/broadcastSpy'
 import { prisma } from '@/lib/prisma'
-import { lockAction, releaseAction, approveAction, rejectAction } from '@/app/approvals/actions'
+import { lockAction, releaseAction, approveAction, rejectAction } from '@/app/(protected)/approvals/actions'
 
 const TEST_USER = { id: 'int-user-alice', email: 'int-alice@example.com', name: 'Int Alice' }
 const OTHER_USER = { id: 'int-user-bob', email: 'int-bob@example.com', name: 'Int Bob' }

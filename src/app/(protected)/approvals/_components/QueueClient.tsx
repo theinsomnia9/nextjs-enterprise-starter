@@ -4,7 +4,7 @@ import { useOptimistic, useTransition } from 'react'
 import { QueueDashboard, type QueueRequest } from '@/components/approval/QueueDashboard'
 import { RejectModal } from '@/components/approval/RejectModal'
 import type { StatusCounts } from '@/components/approval/ApprovalPipeline'
-import { lockAction, releaseAction, approveAction, rejectAction } from '@/app/approvals/actions'
+import { lockAction, releaseAction, approveAction, rejectAction } from '@/app/(protected)/approvals/actions'
 import type { ActionResult } from '@/lib/actions/result'
 import { useState } from 'react'
 
