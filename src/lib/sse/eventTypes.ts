@@ -4,7 +4,8 @@ export const SSE_HEADERS = {
   Connection: 'keep-alive',
 } as const
 
-export const SSE_DONE_FRAME = 'data: [DONE]\n\n'
+export const SSE_DONE_SENTINEL = '[DONE]'
+export const SSE_DONE_FRAME = `data: ${SSE_DONE_SENTINEL}\n\n`
 
 export const AGENT_STREAM_EVENTS = {
   TOKEN: 'token',

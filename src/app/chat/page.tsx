@@ -7,6 +7,9 @@ import { ChatInput } from '@/components/chat/ChatInput'
 import { ChatHistory } from '@/components/chat/ChatHistory'
 import { AgentActivityPanel, type AgentActivity } from '@/components/chat/AgentActivityPanel'
 import { useTheme } from '@/providers/ThemeProvider'
+import { useSingleflightAbort } from '@/hooks/useSingleflightAbort'
+import { parseSseStream } from '@/lib/sse/parseSseStream'
+import { AGENT_STREAM_EVENTS } from '@/lib/sse/eventTypes'
 import { cn } from '@/lib/utils'
 
 interface Message {
@@ -30,16 +33,12 @@ export default function ChatPage() {
   const [agentMode, setAgentMode] = useState(false)
   const [agentActivity, setAgentActivity] = useState<AgentActivity[]>([])
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const streamAbortRef = useRef<AbortController | null>(null)
+  const startStream = useSingleflightAbort()
   const { theme, toggleTheme } = useTheme()
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
-
-  useEffect(() => {
-    return () => streamAbortRef.current?.abort()
-  }, [])
 
   const loadChatMessages = async (chatId: string) => {
     try {
@@ -61,9 +60,7 @@ export default function ChatPage() {
   }
 
   const handleSendMessage = async (content: string) => {
-    streamAbortRef.current?.abort()
-    const controller = new AbortController()
-    streamAbortRef.current = controller
+    const controller = startStream()
 
     setError(null)
     setAgentActivity([]) // Clear previous activity
@@ -95,83 +92,82 @@ export default function ChatPage() {
         throw new Error('Failed to send message')
       }
 
-      const reader = response.body?.getReader()
-      const decoder = new TextDecoder()
+      if (!response.body) throw new Error('Missing response body')
       let assistantMessage = ''
 
-      if (reader) {
-        while (true) {
-          const { done, value } = await reader.read()
-          if (done) break
+      for await (const frame of parseSseStream(response.body, controller.signal)) {
+        if (frame.type === 'done') {
+          setAgentActivity(clearThinking)
+          break
+        }
 
-          const chunk = decoder.decode(value)
-          const lines = chunk.split('\n')
+        let parsed: {
+          chatId?: string
+          type?: string
+          content?: string
+          tool?: string
+          input?: unknown
+          output?: string
+          message?: string
+        }
+        try {
+          parsed = JSON.parse(frame.raw)
+        } catch (e) {
+          console.error('Failed to parse SSE data:', e)
+          continue
+        }
 
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              const data = line.slice(6)
-              if (data === '[DONE]') {
-                setAgentActivity(clearThinking)
-                break
-              }
+        if (parsed.chatId && !currentChatId) {
+          setCurrentChatId(parsed.chatId)
+          setHistoryRefreshTrigger((prev) => prev + 1)
+        }
 
-              try {
-                const parsed = JSON.parse(data)
-                if (parsed.chatId && !currentChatId) {
-                  setCurrentChatId(parsed.chatId)
-                  // Refresh chat history to show the newly created chat
-                  setHistoryRefreshTrigger((prev) => prev + 1)
-                }
+        if (
+          parsed.type === AGENT_STREAM_EVENTS.THINKING ||
+          parsed.type === AGENT_STREAM_EVENTS.TOOL_START ||
+          parsed.type === AGENT_STREAM_EVENTS.TOOL_END
+        ) {
+          const eventType = parsed.type
+          setAgentActivity((prev) => {
+            const base =
+              eventType === AGENT_STREAM_EVENTS.TOOL_START ||
+              eventType === AGENT_STREAM_EVENTS.TOOL_END
+                ? clearThinking(prev)
+                : prev
 
-                // Handle agent events (thinking, tools)
-                if (
-                  parsed.type === 'thinking' ||
-                  parsed.type === 'tool_start' ||
-                  parsed.type === 'tool_end'
-                ) {
-                  setAgentActivity((prev) => {
-                    const base =
-                      parsed.type === 'tool_start' || parsed.type === 'tool_end'
-                        ? clearThinking(prev)
-                        : prev
+            return [
+              ...base,
+              {
+                id: `activity-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+                type: eventType,
+                tool: parsed.tool,
+                input: parsed.input,
+                output: parsed.output,
+                message: parsed.message,
+              },
+            ]
+          })
+        }
 
-                    return [
-                      ...base,
-                      {
-                        id: `activity-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-                        type: parsed.type,
-                        tool: parsed.tool,
-                        input: parsed.input,
-                        output: parsed.output,
-                        message: parsed.message,
-                      },
-                    ]
-                  })
-                }
-
-                // Handle token streaming (both agent API and regular API formats)
-                if ((parsed.type === 'token' || parsed.type === undefined) && parsed.content) {
-                  assistantMessage += parsed.content
-                  setMessages((prev) => {
-                    const last = prev[prev.length - 1]
-                    if (last?.role === 'ASSISTANT') {
-                      return [...prev.slice(0, -1), { ...last, content: assistantMessage }]
-                    }
-                    return [
-                      ...prev,
-                      {
-                        id: `assistant-${Date.now()}`,
-                        role: 'ASSISTANT',
-                        content: assistantMessage,
-                      },
-                    ]
-                  })
-                }
-              } catch (e) {
-                console.error('Failed to parse SSE data:', e)
-              }
+        if (
+          (parsed.type === AGENT_STREAM_EVENTS.TOKEN || parsed.type === undefined) &&
+          parsed.content
+        ) {
+          assistantMessage += parsed.content
+          setMessages((prev) => {
+            const last = prev[prev.length - 1]
+            if (last?.role === 'ASSISTANT') {
+              return [...prev.slice(0, -1), { ...last, content: assistantMessage }]
             }
-          }
+            return [
+              ...prev,
+              {
+                id: `assistant-${Date.now()}`,
+                role: 'ASSISTANT',
+                content: assistantMessage,
+              },
+            ]
+          })
         }
       }
     } catch (error) {
