@@ -74,6 +74,7 @@ export async function POST(req: NextRequest) {
                 version: 'v2',
                 configurable: { thread_id: conversationThreadId },
                 signal: req.signal,
+                recursionLimit: 10,
               }
             )
 
@@ -103,7 +104,7 @@ export async function POST(req: NextRequest) {
                 })
               }
 
-              if (event.event === 'on_chain_start' && event.name === 'agent') {
+              if (event.event === 'on_chat_model_start') {
                 send(controller, { type: 'thinking', message: 'Agent is thinking...' })
               }
             }
