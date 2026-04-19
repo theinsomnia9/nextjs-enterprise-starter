@@ -34,7 +34,7 @@ describe('GET /api/chat/history', () => {
     vi.mocked(prisma.chat.findMany).mockResolvedValue(mockChats)
 
     const request = new Request('http://localhost:3000/api/chat/history')
-    const response = await GET(request)
+    const response = await GET(request, { params: Promise.resolve({}) })
 
     expect(response.status).toBe(200)
     const data = await response.json()
@@ -50,7 +50,7 @@ describe('GET /api/chat/history', () => {
     vi.mocked(prisma.chat.findMany).mockResolvedValue([])
 
     const request = new Request('http://localhost:3000/api/chat/history')
-    const response = await GET(request)
+    const response = await GET(request, { params: Promise.resolve({}) })
 
     expect(response.status).toBe(200)
     const data = await response.json()
@@ -58,13 +58,15 @@ describe('GET /api/chat/history', () => {
   })
 
   it('should return 500 on database error', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     vi.mocked(prisma.chat.findMany).mockRejectedValue(new Error('Database error'))
 
     const request = new Request('http://localhost:3000/api/chat/history')
-    const response = await GET(request)
+    const response = await GET(request, { params: Promise.resolve({}) })
 
     expect(response.status).toBe(500)
     const data = await response.json()
-    expect(data.error).toBe('Failed to fetch chat history')
+    expect(data.code).toBe('INTERNAL_ERROR')
+    errorSpy.mockRestore()
   })
 })

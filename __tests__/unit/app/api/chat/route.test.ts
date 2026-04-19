@@ -23,6 +23,9 @@ vi.mock('@/lib/telemetry/tracing', () => ({
   createSpan: vi.fn((_name: string, fn: (span: unknown) => unknown) =>
     fn({ setAttributes: vi.fn(), setStatus: vi.fn(), recordException: vi.fn(), end: vi.fn() })
   ),
+  addSpanAttribute: vi.fn(),
+  addSpanEvent: vi.fn(),
+  getCurrentSpan: vi.fn(),
 }))
 
 import { POST } from '@/app/api/chat/route'
