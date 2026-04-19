@@ -3,12 +3,23 @@ import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
 import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http'
 import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node'
 import { PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics'
-import { Resource } from '@opentelemetry/resources'
-import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions'
+import { resourceFromAttributes } from '@opentelemetry/resources'
+import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION } from '@opentelemetry/semantic-conventions'
+import { ATTR_DEPLOYMENT_ENVIRONMENT_NAME } from '@opentelemetry/semantic-conventions/incubating'
 import { diag, DiagConsoleLogger, DiagLogLevel } from '@opentelemetry/api'
 
-if (process.env.NODE_ENV === 'development') {
-  diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.INFO)
+if (process.env.OTEL_LOG_LEVEL) {
+  const levels: Record<string, DiagLogLevel> = {
+    none: DiagLogLevel.NONE,
+    error: DiagLogLevel.ERROR,
+    warn: DiagLogLevel.WARN,
+    info: DiagLogLevel.INFO,
+    debug: DiagLogLevel.DEBUG,
+    verbose: DiagLogLevel.VERBOSE,
+    all: DiagLogLevel.ALL,
+  }
+  const level = levels[process.env.OTEL_LOG_LEVEL.toLowerCase()] ?? DiagLogLevel.INFO
+  diag.setLogger(new DiagConsoleLogger(), level)
 }
 
 const traceExporter = new OTLPTraceExporter({
@@ -24,25 +35,22 @@ const metricExporter = new OTLPMetricExporter({
 })
 
 const sdk = new NodeSDK({
-  resource: new Resource({
-    [SemanticResourceAttributes.SERVICE_NAME]:
-      process.env.OTEL_SERVICE_NAME || 'nextjs-boilerplate',
-    [SemanticResourceAttributes.SERVICE_VERSION]: process.env.OTEL_SERVICE_VERSION || '0.1.0',
-    [SemanticResourceAttributes.DEPLOYMENT_ENVIRONMENT]: process.env.NODE_ENV || 'development',
+  resource: resourceFromAttributes({
+    [ATTR_SERVICE_NAME]: process.env.OTEL_SERVICE_NAME || 'nextjs-boilerplate',
+    [ATTR_SERVICE_VERSION]: process.env.OTEL_SERVICE_VERSION || '0.1.0',
+    [ATTR_DEPLOYMENT_ENVIRONMENT_NAME]: process.env.NODE_ENV || 'development',
   }),
   traceExporter,
-  metricReader: new PeriodicExportingMetricReader({
-    exporter: metricExporter,
-    exportIntervalMillis: 60000,
-  }),
+  metricReaders: [
+    new PeriodicExportingMetricReader({
+      exporter: metricExporter,
+      exportIntervalMillis: 60000,
+    }),
+  ],
   instrumentations: [
     getNodeAutoInstrumentations({
-      '@opentelemetry/instrumentation-fs': {
-        enabled: false,
-      },
-      '@opentelemetry/instrumentation-winston': {
-        enabled: false,
-      },
+      '@opentelemetry/instrumentation-fs': { enabled: false },
+      '@opentelemetry/instrumentation-winston': { enabled: false },
     }),
   ],
 })
