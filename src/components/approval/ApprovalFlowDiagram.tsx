@@ -3,7 +3,14 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import dynamic from 'next/dynamic'
 import type { Node as RFNode, Edge as RFEdge, NodeMouseHandler, NodeDragHandler } from 'reactflow'
-import { Background, Controls, MiniMap, useNodesState, useEdgesState } from 'reactflow'
+import {
+  Background,
+  BackgroundVariant,
+  Controls,
+  MiniMap,
+  useNodesState,
+  useEdgesState,
+} from 'reactflow'
 import 'reactflow/dist/style.css'
 import * as Y from 'yjs'
 import { createYjsRoom, destroyYjsRoom, type YjsRoom } from '@/lib/approvals/yjsClient'
@@ -235,7 +242,6 @@ export function ApprovalFlowDiagram({ request, roomId }: ApprovalFlowDiagramProp
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodesRef.current)
   const [edges, , onEdgesChange] = useEdgesState(initialEdgesRef.current)
 
-  /* Sync node styles when selection changes — keeps node references stable */
   useEffect(() => {
     setNodes((prev) =>
       prev.map((n) => ({
@@ -245,7 +251,6 @@ export function ApprovalFlowDiagram({ request, roomId }: ApprovalFlowDiagramProp
     )
   }, [selectedNodeId, request.status, setNodes])
 
-  /* Setup Yjs room + subscribe to REMOTE position updates only */
   useEffect(() => {
     const effectiveRoomId = roomId ?? `approval-${request.id}`
     let room: YjsRoom | null = null
@@ -285,7 +290,6 @@ export function ApprovalFlowDiagram({ request, roomId }: ApprovalFlowDiagramProp
     }
   }, [request.id, roomId, setNodes])
 
-  /* Broadcast drag-end position to all viewers via Yjs */
   const handleNodeDragStop = useCallback<NodeDragHandler>((_event, node) => {
     if (yjsRoomRef.current) {
       yjsRoomRef.current.nodesMap.set(node.id, {
@@ -318,7 +322,7 @@ export function ApprovalFlowDiagram({ request, roomId }: ApprovalFlowDiagramProp
           nodesConnectable={false}
           elementsSelectable={true}
         >
-          <Background variant={'dots' as never} gap={20} size={1} color="#1e293b" />
+          <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#1e293b" />
           <Controls showInteractive={false} className="!border-border !bg-card" />
           <MiniMap
             className="!border-border !bg-card"
