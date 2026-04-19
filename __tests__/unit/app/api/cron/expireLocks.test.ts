@@ -3,6 +3,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 vi.mock('@/lib/prisma', () => ({
   prisma: {
     approvalRequest: {
+      findMany: vi
+        .fn()
+        .mockResolvedValue([{ id: 'req-1' }, { id: 'req-2' }, { id: 'req-3' }]),
       updateMany: vi.fn().mockResolvedValue({ count: 3 }),
     },
   },
@@ -53,9 +56,16 @@ describe('GET /api/cron/expire-locks', () => {
       headers: { Authorization: 'Bearer test-secret' },
     })
     await GET(req)
-    expect(prisma.approvalRequest.updateMany).toHaveBeenCalledWith(
+    // The repository first finds expired rows (by status REVIEWING + lockExpiresAt)
+    // then bulk-updates them by id.
+    expect(prisma.approvalRequest.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({ status: 'REVIEWING' }),
+      })
+    )
+    expect(prisma.approvalRequest.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ id: { in: ['req-1', 'req-2', 'req-3'] } }),
         data: expect.objectContaining({ status: 'PENDING', assigneeId: null }),
       })
     )
