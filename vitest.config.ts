@@ -27,6 +27,10 @@ export default defineConfig({
       },
     },
     include: ['__tests__/unit/**/*.{test,spec}.{ts,tsx}'],
+    environmentMatchGlobs: [
+      // Auth module tests use jose crypto and must run in node (no jsdom realm issues)
+      ['__tests__/unit/lib/auth/**', 'node'],
+    ],
   },
   resolve: {
     alias: {

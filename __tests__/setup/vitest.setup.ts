@@ -39,8 +39,8 @@ global.console = {
   warn: vi.fn(),
 }
 
-// Mock window.matchMedia
-Object.defineProperty(window, 'matchMedia', {
+// Mock window.matchMedia (jsdom only)
+if (typeof window !== 'undefined') Object.defineProperty(window, 'matchMedia', {
   writable: true,
   value: vi.fn().mockImplementation((query) => ({
     matches: false,
@@ -72,12 +72,16 @@ const localStorageMock = (() => {
   }
 })()
 
-Object.defineProperty(window, 'localStorage', {
-  value: localStorageMock,
-})
+if (typeof window !== 'undefined') {
+  Object.defineProperty(window, 'localStorage', {
+    value: localStorageMock,
+  })
+}
 
-// Mock scrollIntoView
-Element.prototype.scrollIntoView = vi.fn()
+// Mock scrollIntoView (jsdom only)
+if (typeof Element !== 'undefined') {
+  Element.prototype.scrollIntoView = vi.fn()
+}
 
 // Mock EventSource for SSE tests
 class MockEventSource {
