@@ -5,9 +5,9 @@ const prisma = new PrismaClient()
 const SYSTEM_USER_EMAIL = 'system@local'
 
 const DEV_USERS = [
-  { id: 'dev-user-alice', name: 'Alice', email: 'alice@dev.local' },
-  { id: 'dev-user-bob', name: 'Bob', email: 'bob@dev.local' },
-  { id: 'dev-user-carol', name: 'Carol', email: 'carol@dev.local' },
+  { id: 'dev-user-alice', entraOid: 'seed-oid-alice', name: 'Alice', email: 'alice@dev.local' },
+  { id: 'dev-user-bob', entraOid: 'seed-oid-bob', name: 'Bob', email: 'bob@dev.local' },
+  { id: 'dev-user-carol', entraOid: 'seed-oid-carol', name: 'Carol', email: 'carol@dev.local' },
 ]
 
 const DEFAULT_PRIORITY_CONFIGS = [
@@ -48,7 +48,7 @@ async function main() {
     await prisma.user.upsert({
       where: { email: u.email },
       update: { name: u.name },
-      create: { id: u.id, name: u.name, email: u.email },
+      create: { id: u.id, entraOid: u.entraOid, name: u.name, email: u.email },
     })
   }
 
