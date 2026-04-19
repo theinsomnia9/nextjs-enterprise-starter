@@ -3,6 +3,8 @@ import { getActor } from '@/lib/auth/actor'
 import { QueueClient } from './_components/QueueClient'
 import type { QueueRequest } from '@/components/approval/QueueDashboard'
 
+export const dynamic = 'force-dynamic'
+
 export default async function ApprovalsPage() {
   const actor = await getActor()
   const { requests, counts } = await approvalService.listQueueForDashboard()

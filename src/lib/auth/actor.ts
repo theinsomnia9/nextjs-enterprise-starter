@@ -1,24 +1,14 @@
-import { getServerSession } from 'next-auth'
 import { AppError, ErrorCode } from '@/lib/errors/AppError'
 
 export const DEV_ACTOR_ID = 'dev-user-alice'
 
 /**
- * Resolve the current actor from the NextAuth session.
- *
- * - Production: requires a valid session; throws UNAUTHORIZED otherwise.
- * - Non-production: falls back to DEV_ACTOR_ID when no session is present
- *   so local development works without a full NextAuth setup.
- *
- * When real NextAuth wiring is complete, delete the dev fallback branch —
- * all call sites stay unchanged.
+ * Resolve the current actor. NextAuth v5 wiring is not yet in place
+ * (no `auth.ts` config module). Until it is, dev falls back to
+ * DEV_ACTOR_ID and production refuses unauthenticated access. When
+ * v5's `auth()` is wired, call it here and return `{ id: session.user.id }`.
  */
 export async function getActor(): Promise<{ id: string }> {
-  const session = (await getServerSession()) as { user?: { id?: string } } | null
-  const id = session?.user?.id
-
-  if (id) return { id }
-
   if (process.env.NODE_ENV !== 'production') {
     return { id: DEV_ACTOR_ID }
   }
