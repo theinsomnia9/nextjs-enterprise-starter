@@ -13,14 +13,14 @@ A production-ready Next.js 14 application featuring comprehensive observability,
 - ✅ **Modern UI** - Tailwind CSS with dark/light theme toggle
 - ✅ **Type Safety** - Full TypeScript implementation with strict mode
 - ✅ **Docker Infrastructure** - Complete local development environment
-- ⏳ **Microsoft Entra ID Authentication** - Schema and adapter ready, implementation pending
+- ✅ **Microsoft Entra ID Authentication** - MSAL Node OAuth 2.0 code+PKCE, JWE session cookies, role-based authz
 
 ## Tech Stack
 
 - **Framework:** Next.js 14 (App Router)
 - **Language:** TypeScript
 - **Database:** PostgreSQL + Prisma ORM
-- **Auth:** NextAuth.js v5 + `@auth/prisma-adapter` (Entra ID integration pending)
+- **Auth:** MSAL Node (Microsoft Entra ID, single-tenant) + jose for JWE session cookies
 - **Observability:** OpenTelemetry (OTLP), Jaeger, Prometheus, Grafana
 - **Real-time:** Server-Sent Events (SSE) + Pusher + Yjs (CRDT collaboration)
 - **AI:** OpenAI SDK (GPT-4o-mini streaming)
@@ -28,6 +28,42 @@ A production-ready Next.js 14 application featuring comprehensive observability,
 - **Styling:** Tailwind CSS (dark/light mode via CSS variables)
 - **Testing:** Vitest + Playwright + MSW
 - **Containerization:** Docker + Docker Compose
+
+## Authentication
+
+This project uses **Microsoft Entra ID** (single-tenant) via **MSAL Node** with encrypted session cookies. There is no dev fallback — every environment needs a working Entra config.
+
+### Set up a free Entra tenant (for local dev)
+
+1. Join the free **[Microsoft 365 Developer Program](https://developer.microsoft.com/microsoft-365/dev-program)** — gives you a sandbox tenant with ~25 test users.
+2. In the Azure/Entra portal for that tenant, create an **App registration**:
+   - **Supported account types:** *Accounts in this organizational directory only (single tenant)*.
+   - **Redirect URI (Web):** `http://localhost:3000/auth/callback`.
+   - Copy the **Application (client) ID** → `AZURE_AD_CLIENT_ID`.
+   - Copy the **Directory (tenant) ID** → `AZURE_AD_TENANT_ID`.
+   - Create a **Client secret** (Certificates & secrets → New client secret). Copy the *Value* → `AZURE_AD_CLIENT_SECRET`.
+3. Define **App Roles** in the app registration manifest — three values: `Admin`, `Approver`, `Requester`. "Allowed member types": `Users/Groups`.
+4. Under **Enterprise applications** → your app → **Users and groups**, assign yourself (or test users) to one of the app roles. "Assignment required?" should be **No** (users with no role default to `Requester`).
+
+### Configure `.env`
+
+```
+AZURE_AD_CLIENT_ID=<from app registration>
+AZURE_AD_CLIENT_SECRET=<from app registration>
+AZURE_AD_TENANT_ID=<from app registration>
+APP_URL=http://localhost:3000
+AUTH_SESSION_SECRET=<openssl rand -base64 32>
+```
+
+### Roles
+
+| Role | Permissions |
+|---|---|
+| `Admin` | Everything — approve/reject, edit PriorityConfig |
+| `Approver` | Lock / release / approve / reject approval requests |
+| `Requester` (default) | Submit and view own requests |
+
+Role checks live next to the Server Action that performs each verb — see `src/lib/auth/requireRole.ts`.
 
 ## Prerequisites
 

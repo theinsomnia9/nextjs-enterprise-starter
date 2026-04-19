@@ -22,16 +22,6 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }))
 
-// Mock NextAuth
-vi.mock('next-auth/react', () => ({
-  useSession: () => ({
-    data: null,
-    status: 'unauthenticated',
-  }),
-  signIn: vi.fn(),
-  signOut: vi.fn(),
-}))
-
 // Suppress console errors in tests
 global.console = {
   ...console,
