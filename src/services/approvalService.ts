@@ -3,6 +3,7 @@ import { IApprovalRepository, approvalRepository } from '@/lib/approvals/reposit
 import { notFound, alreadyResolved, lockedByOther, notCurrentReviewer, validationError } from '@/lib/errors/AppError'
 import type { PriorityConfigValues } from '@/lib/approvals/types'
 import type { Prisma } from '@prisma/client'
+import { calculatePriorityScore } from '@/lib/approvals/priorityScore'
 
 export interface ApprovalServiceDeps {
   repository: IApprovalRepository
@@ -52,6 +53,29 @@ export class ApprovalService {
     }))
 
     return { requests: requestsWithConfig, configs }
+  }
+
+  async listQueueForDashboard() {
+    const [{ requests, configs }, statusGroups] = await Promise.all([
+      this.getQueueWithConfigs(),
+      prisma.approvalRequest.groupBy({ by: ['status'], _count: { id: true } }),
+    ])
+
+    const counts: Record<'PENDING' | 'REVIEWING' | 'APPROVED' | 'REJECTED', number> = {
+      PENDING: 0,
+      REVIEWING: 0,
+      APPROVED: 0,
+      REJECTED: 0,
+    }
+    for (const g of statusGroups) {
+      if (g.status in counts) counts[g.status as keyof typeof counts] = g._count.id
+    }
+
+    const scored = requests
+      .map((r) => ({ ...r, priorityScore: calculatePriorityScore(r.submittedAt, r.config) }))
+      .sort((a, b) => b.priorityScore - a.priorityScore)
+
+    return { requests: scored, total: scored.length, counts, configs }
   }
 
   async createApproval(data: Prisma.ApprovalRequestCreateInput) {
