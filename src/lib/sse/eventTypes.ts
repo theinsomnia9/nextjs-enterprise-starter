@@ -4,6 +4,18 @@ export const SSE_HEADERS = {
   Connection: 'keep-alive',
 } as const
 
+export const SSE_DONE_FRAME = 'data: [DONE]\n\n'
+
+export const AGENT_STREAM_EVENTS = {
+  TOKEN: 'token',
+  TOOL_START: 'tool_start',
+  TOOL_END: 'tool_end',
+  THINKING: 'thinking',
+  ERROR: 'error',
+} as const
+
+export type AgentStreamEvent = (typeof AGENT_STREAM_EVENTS)[keyof typeof AGENT_STREAM_EVENTS]
+
 export const SSE_EVENTS = {
   REQUEST_SUBMITTED: 'request:submitted',
   REQUEST_LOCKED: 'request:locked',

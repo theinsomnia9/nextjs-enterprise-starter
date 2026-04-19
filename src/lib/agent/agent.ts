@@ -4,7 +4,7 @@ import { createReactAgent } from '@langchain/langgraph/prebuilt'
 import { MemorySaver } from '@langchain/langgraph-checkpoint'
 import { tool } from '@langchain/core/tools'
 import { z } from 'zod'
-import { tavily, type TavilyClient } from '@tavily/core'
+import { tavily } from '@tavily/core'
 
 export interface AgentConfig {
   model?: string
@@ -19,15 +19,6 @@ const SYSTEM_PROMPT = [
   '- `calculator` for arithmetic the model should not perform mentally.',
   'Prefer answering directly when no tool is needed. Cite sources from search results when you use them.',
 ].join(' ')
-
-let tavilyClient: TavilyClient | null = null
-
-function getTavilyClient(apiKey: string): TavilyClient {
-  if (!tavilyClient) {
-    tavilyClient = tavily({ apiKey })
-  }
-  return tavilyClient
-}
 
 let agentSingleton: CompiledAgent | null = null
 
@@ -56,11 +47,11 @@ export function createAgent(config: AgentConfig = {}): CompiledAgent {
     apiKey: openAIApiKey,
   })
 
+  const tavilyClient = tavily({ apiKey: tavilyApiKey })
   const tavilySearch = tool(
     async ({ query }: { query: string }) => {
       try {
-        const client = getTavilyClient(tavilyApiKey)
-        const response = await client.search(query, { maxResults: 3 })
+        const response = await tavilyClient.search(query, { maxResults: 3 })
         return JSON.stringify(response.results)
       } catch (error) {
         const message = error instanceof Error ? error.message : 'unknown error'

@@ -3,7 +3,7 @@ import OpenAI from 'openai'
 import { z } from 'zod'
 import { createSpan } from '@/lib/telemetry/tracing'
 import { resolveChat, saveAssistantMessage } from '@/lib/chat/helpers'
-import { SSE_HEADERS } from '@/lib/sse/eventTypes'
+import { SSE_HEADERS, SSE_DONE_FRAME } from '@/lib/sse/eventTypes'
 
 const requestSchema = z.object({
   message: z.string().min(1, 'Message is required'),
@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
 
             await saveAssistantMessage(chat.chatId, fullResponse)
 
-            controller.enqueue(encoder.encode('data: [DONE]\n\n'))
+            controller.enqueue(encoder.encode(SSE_DONE_FRAME))
             controller.close()
           } catch (error) {
             controller.error(error)
