@@ -1,12 +1,11 @@
 'use client'
 
-import { useOptimistic, useTransition } from 'react'
+import { useMemo, useOptimistic, useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import { QueueDashboard, type QueueRequest } from '@/components/approval/QueueDashboard'
 import { RejectModal } from '@/components/approval/RejectModal'
 import type { StatusCounts } from '@/components/approval/ApprovalPipeline'
 import { lockAction, releaseAction, approveAction, rejectAction } from '@/app/approvals/actions'
-import type { ActionResult } from '@/lib/actions/result'
-import { useState } from 'react'
 
 type OptimisticPatch =
   | { type: 'lock'; id: string; reviewerId: string }
@@ -47,16 +46,26 @@ function toastError(message: string) {
 }
 
 export function QueueClient({ initialRequests, initialCounts, currentUserId }: QueueClientProps) {
+  const router = useRouter()
   const [requests, setRequests] = useState(initialRequests)
-  const [counts] = useState(initialCounts)
   const [optimisticRequests, applyOptimistic] = useOptimistic(requests, applyPatch)
   const [rejectTarget, setRejectTarget] = useState<string | null>(null)
   const [, startTransition] = useTransition()
 
+  const displayCounts = useMemo(
+    () => ({
+      PENDING: optimisticRequests.filter((r) => r.status === 'PENDING').length,
+      REVIEWING: optimisticRequests.filter((r) => r.status === 'REVIEWING').length,
+      APPROVED: initialCounts.APPROVED,
+      REJECTED: initialCounts.REJECTED,
+    }),
+    [optimisticRequests, initialCounts]
+  )
+
   const handleLock = (id: string) => {
     startTransition(async () => {
       applyOptimistic({ type: 'lock', id, reviewerId: currentUserId })
-      const result: ActionResult<unknown> = await lockAction(id)
+      const result = await lockAction(id)
       if (!result.ok) toastError(result.error.message)
     })
   }
@@ -94,16 +103,13 @@ export function QueueClient({ initialRequests, initialCounts, currentUserId }: Q
     setRejectTarget(null)
   }
 
-  const handleRefresh = () => {
-    // SSE-driven refresh handled by QueueDashboard/ApprovalPipeline subscription.
-    // Explicit refresh: re-fetch via a Server Action in a later iteration.
-  }
+  const handleRefresh = () => router.refresh()
 
   return (
     <>
       <QueueDashboard
         requests={optimisticRequests}
-        counts={counts}
+        counts={displayCounts}
         currentUserId={currentUserId}
         onRefresh={handleRefresh}
         onLock={handleLock}
