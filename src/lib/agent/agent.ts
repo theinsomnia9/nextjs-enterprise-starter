@@ -5,35 +5,26 @@ import { MemorySaver } from '@langchain/langgraph-checkpoint'
 import { tool } from '@langchain/core/tools'
 import { z } from 'zod'
 import { tavily } from '@tavily/core'
-import type { BaseMessage } from '@langchain/core/messages'
 
 export interface AgentConfig {
   model?: string
   temperature?: number
 }
 
-export interface CompiledAgent {
-  invoke: (
-    input: { messages: BaseMessage[] },
-    config?: { configurable?: { thread_id?: string } }
-  ) => Promise<{ messages: BaseMessage[] }>
-  streamEvents: (
-    input: { messages: BaseMessage[] },
-    options: { version: 'v1' | 'v2'; configurable?: { thread_id?: string } }
-  ) => AsyncIterable<{
-    event: string
-    name: string
-    data: { chunk?: { content?: string }; output?: { content?: string } }
-  }>
-}
+export type CompiledAgent = ReturnType<typeof createReactAgent>
 
-// Module-level singleton — MemorySaver is in-memory and resets on server restart.
-// For production, swap to @langchain/langgraph-checkpoint-postgres.
+const SYSTEM_PROMPT = [
+  'You are a helpful assistant with access to two tools:',
+  '- `tavily_search` for current events, recent facts, or anything that may have changed since training.',
+  '- `calculator` for arithmetic the model should not perform mentally.',
+  'Prefer answering directly when no tool is needed. Cite sources from search results when you use them.',
+].join(' ')
+
 let agentSingleton: CompiledAgent | null = null
 
-export function getAgent(config: AgentConfig = {}): CompiledAgent {
+export function getAgent(): CompiledAgent {
   if (!agentSingleton) {
-    agentSingleton = createAgent(config)
+    agentSingleton = createAgent()
   }
   return agentSingleton
 }
@@ -56,12 +47,16 @@ export function createAgent(config: AgentConfig = {}): CompiledAgent {
     apiKey: openAIApiKey,
   })
 
-  // Create Tavily search tool
+  const tavilyClient = tavily({ apiKey: tavilyApiKey })
   const tavilySearch = tool(
     async ({ query }: { query: string }) => {
-      const client = tavily({ apiKey: tavilyApiKey })
-      const response = await client.search(query, { maxResults: 3 })
-      return JSON.stringify(response.results)
+      try {
+        const response = await tavilyClient.search(query, { maxResults: 3 })
+        return JSON.stringify(response.results)
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'unknown error'
+        return JSON.stringify({ error: `tavily_search failed: ${message}` })
+      }
     },
     {
       name: 'tavily_search',
@@ -74,15 +69,12 @@ export function createAgent(config: AgentConfig = {}): CompiledAgent {
 
   const tools = [tavilySearch, new Calculator()]
 
-  // In-memory checkpointer - resets on server restart
-  // For production: use @langchain/langgraph-checkpoint-postgres
   const checkpointer = new MemorySaver()
 
-  const agent = createReactAgent({
+  return createReactAgent({
     llm: model,
     tools,
     checkpointSaver: checkpointer,
+    prompt: SYSTEM_PROMPT,
   })
-
-  return agent as unknown as CompiledAgent
 }

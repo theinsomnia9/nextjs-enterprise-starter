@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { withApi } from '@/lib/api/withApi'
 import { addSpanAttribute } from '@/lib/telemetry/tracing'
 import { resolveChat, saveAssistantMessage } from '@/lib/chat/helpers'
-import { SSE_HEADERS } from '@/lib/sse/eventTypes'
+import { SSE_HEADERS, SSE_DONE_FRAME } from '@/lib/sse/eventTypes'
 import { notFound, validationError } from '@/lib/errors/AppError'
 
 const requestSchema = z.object({
@@ -11,7 +11,14 @@ const requestSchema = z.object({
   chatId: z.string().nullable(),
 })
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+let openaiClient: OpenAI | null = null
+
+function getOpenAIClient(): OpenAI {
+  if (!openaiClient) {
+    openaiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+  }
+  return openaiClient
+}
 
 export const POST = withApi('http.chat.create', async (req) => {
   const body = await req.json()
@@ -34,7 +41,7 @@ export const POST = withApi('http.chat.create', async (req) => {
     content: msg.content,
   }))
 
-  const stream = await openai.chat.completions.create({
+  const stream = await getOpenAIClient().chat.completions.create({
     model: 'gpt-4o-mini',
     messages,
     stream: true,
@@ -60,7 +67,7 @@ export const POST = withApi('http.chat.create', async (req) => {
 
         await saveAssistantMessage(chat.chatId, fullResponse)
 
-        controller.enqueue(encoder.encode('data: [DONE]\n\n'))
+        controller.enqueue(encoder.encode(SSE_DONE_FRAME))
         controller.close()
       } catch (error) {
         controller.error(error)

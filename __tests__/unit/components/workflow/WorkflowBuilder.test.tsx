@@ -2,39 +2,47 @@ import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '../../../setup/test-utils'
 import WorkflowBuilder from '@/components/workflow/WorkflowBuilder'
 
-vi.mock('reactflow', async () => {
-  const actual = await vi.importActual('reactflow')
+vi.mock('reactflow', () => {
+  const MockReactFlow = ({
+    children,
+    nodes,
+    edges,
+    onNodesChange,
+    onEdgesChange,
+    onConnect,
+  }: any) => (
+    <div data-testid="react-flow">
+      <div data-testid="nodes-count">{nodes?.length || 0}</div>
+      <div data-testid="edges-count">{edges?.length || 0}</div>
+      <button
+        data-testid="add-node-trigger"
+        onClick={() => {
+          const newNode = {
+            id: 'test-node-1',
+            position: { x: 100, y: 100 },
+            data: { label: 'Test Node' },
+            type: 'custom',
+          }
+          onNodesChange?.([{ type: 'add', item: newNode }])
+        }}
+      >
+        Add Node
+      </button>
+      <button
+        data-testid="connect-trigger"
+        onClick={() => {
+          onConnect?.({ source: '1', target: '2' })
+        }}
+      >
+        Connect
+      </button>
+      {children}
+    </div>
+  )
   return {
-    ...actual,
-    ReactFlow: ({ children, nodes, edges, onNodesChange, onEdgesChange, onConnect }: any) => (
-      <div data-testid="react-flow">
-        <div data-testid="nodes-count">{nodes?.length || 0}</div>
-        <div data-testid="edges-count">{edges?.length || 0}</div>
-        <button
-          data-testid="add-node-trigger"
-          onClick={() => {
-            const newNode = {
-              id: 'test-node-1',
-              position: { x: 100, y: 100 },
-              data: { label: 'Test Node' },
-              type: 'custom',
-            }
-            onNodesChange?.([{ type: 'add', item: newNode }])
-          }}
-        >
-          Add Node
-        </button>
-        <button
-          data-testid="connect-trigger"
-          onClick={() => {
-            onConnect?.({ source: '1', target: '2' })
-          }}
-        >
-          Connect
-        </button>
-        {children}
-      </div>
-    ),
+    default: MockReactFlow,
+    ReactFlow: MockReactFlow,
+    BackgroundVariant: { Dots: 'dots', Lines: 'lines', Cross: 'cross' },
     MiniMap: () => <div data-testid="minimap">MiniMap</div>,
     Controls: () => <div data-testid="controls">Controls</div>,
     Background: ({ variant }: any) => <div data-testid="background">{variant}</div>,
@@ -51,10 +59,10 @@ vi.mock('reactflow', async () => {
 })
 
 describe('WorkflowBuilder', () => {
-  it('should render the workflow builder with ReactFlow', () => {
+  it('should render the workflow builder with ReactFlow', async () => {
     render(<WorkflowBuilder />)
 
-    expect(screen.getByTestId('react-flow')).toBeInTheDocument()
+    expect(await screen.findByTestId('react-flow')).toBeInTheDocument()
   })
 
   it('should render MiniMap, Controls, and Background components', () => {

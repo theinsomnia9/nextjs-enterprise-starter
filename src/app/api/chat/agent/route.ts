@@ -4,7 +4,7 @@ import { addSpanAttribute } from '@/lib/telemetry/tracing'
 import { getAgent } from '@/lib/agent/agent'
 import { resolveChat, saveAssistantMessage } from '@/lib/chat/helpers'
 import { HumanMessage, AIMessage, SystemMessage } from '@langchain/core/messages'
-import { SSE_HEADERS } from '@/lib/sse/eventTypes'
+import { SSE_HEADERS, SSE_DONE_FRAME, AGENT_STREAM_EVENTS } from '@/lib/sse/eventTypes'
 import { notFound, validationError } from '@/lib/errors/AppError'
 
 const requestSchema = z.object({
@@ -58,67 +58,69 @@ export const POST = withApi('http.chat.agent', async (req) => {
 
   const readableStream = new ReadableStream({
     async start(controller) {
+      const send = (payload: unknown) => {
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`))
+      }
+      const finalize = () => {
+        controller.enqueue(encoder.encode(SSE_DONE_FRAME))
+        controller.close()
+      }
+
       try {
-        controller.enqueue(
-          encoder.encode(`data: ${JSON.stringify({ chatId: chat.chatId })}\n\n`)
-        )
+        send({ chatId: chat.chatId })
 
         const eventStream = agent.streamEvents(
           { messages: langChainMessages },
-          { version: 'v2', configurable: { thread_id: conversationThreadId } }
+          {
+            version: 'v2',
+            configurable: { thread_id: conversationThreadId },
+            signal: req.signal,
+            recursionLimit: 10,
+          }
         )
 
         for await (const event of eventStream) {
-          if (event.event === 'on_chat_model_stream') {
+          if (event.event === 'on_chat_model_start') {
+            send({ type: AGENT_STREAM_EVENTS.THINKING, message: 'Agent is thinking...' })
+          } else if (event.event === 'on_chat_model_stream') {
             const content = event.data?.chunk?.content
             if (content) {
               fullResponse += content
-              controller.enqueue(
-                encoder.encode(`data: ${JSON.stringify({ type: 'token', content })}\n\n`)
-              )
+              send({ type: AGENT_STREAM_EVENTS.TOKEN, content })
             }
-          }
-
-          if (event.event === 'on_tool_start') {
-            controller.enqueue(
-              encoder.encode(
-                `data: ${JSON.stringify({
-                  type: 'tool_start',
-                  tool: event.name,
-                  input: (event.data as { input?: unknown }).input,
-                })}\n\n`
-              )
-            )
-          }
-
-          if (event.event === 'on_tool_end') {
-            const output = (event.data as { output?: unknown }).output
-            controller.enqueue(
-              encoder.encode(
-                `data: ${JSON.stringify({
-                  type: 'tool_end',
-                  tool: event.name,
-                  output: typeof output === 'string' ? output : JSON.stringify(output),
-                })}\n\n`
-              )
-            )
-          }
-
-          if (event.event === 'on_chain_start' && event.name === 'agent') {
-            controller.enqueue(
-              encoder.encode(
-                `data: ${JSON.stringify({ type: 'thinking', message: 'Agent is thinking...' })}\n\n`
-              )
-            )
+          } else if (event.event === 'on_tool_start') {
+            send({
+              type: AGENT_STREAM_EVENTS.TOOL_START,
+              tool: event.name,
+              input: event.data?.input,
+            })
+          } else if (event.event === 'on_tool_end') {
+            const output = event.data?.output
+            send({
+              type: AGENT_STREAM_EVENTS.TOOL_END,
+              tool: event.name,
+              output: typeof output === 'string' ? output : JSON.stringify(output),
+            })
           }
         }
 
         await saveAssistantMessage(chat.chatId, fullResponse)
-
-        controller.enqueue(encoder.encode('data: [DONE]\n\n'))
-        controller.close()
       } catch (error) {
-        controller.error(error)
+        if (fullResponse) {
+          try {
+            await saveAssistantMessage(chat.chatId, fullResponse)
+          } catch (saveError) {
+            console.error('Failed to persist partial assistant message:', saveError)
+          }
+        }
+
+        if (!req.signal.aborted) {
+          const message = error instanceof Error ? error.message : 'Stream failed'
+          console.error('Agent stream error:', error)
+          send({ type: AGENT_STREAM_EVENTS.ERROR, message })
+        }
+      } finally {
+        finalize()
       }
     },
   })
