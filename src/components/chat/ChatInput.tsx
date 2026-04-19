@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, FormEvent, KeyboardEvent } from 'react'
+import { useRef, useState, KeyboardEvent } from 'react'
+import { useFormStatus } from 'react-dom'
 import { Send } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -9,32 +10,49 @@ interface ChatInputProps {
   disabled?: boolean
 }
 
+function SendButton() {
+  const { pending } = useFormStatus()
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      aria-label="Send message"
+      className={cn(
+        'flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground',
+        'hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-ring/20',
+        'disabled:cursor-not-allowed disabled:opacity-50',
+        'interactive'
+      )}
+    >
+      <Send className="h-4 w-4" />
+      <span>Send</span>
+    </button>
+  )
+}
+
 export function ChatInput({ onSend, disabled = false }: ChatInputProps) {
   const [message, setMessage] = useState('')
+  const formRef = useRef<HTMLFormElement>(null)
 
-  const sendMessage = () => {
-    if (message.trim() && !disabled) {
-      onSend(message.trim())
-      setMessage('')
-    }
-  }
-
-  const handleSubmit = (e: FormEvent) => {
-    e.preventDefault()
-    sendMessage()
+  const formAction = (formData: FormData) => {
+    const value = (formData.get('message') ?? '').toString().trim()
+    if (!value) return
+    onSend(value)
+    setMessage('')
   }
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
-      sendMessage()
+      formRef.current?.requestSubmit()
     }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex gap-2">
+    <form ref={formRef} action={formAction} className="flex gap-2">
       <input
         type="text"
+        name="message"
         value={message}
         onChange={(e) => setMessage(e.target.value)}
         onKeyDown={handleKeyDown}
@@ -47,20 +65,7 @@ export function ChatInput({ onSend, disabled = false }: ChatInputProps) {
           'disabled:cursor-not-allowed disabled:opacity-50'
         )}
       />
-      <button
-        type="submit"
-        disabled={disabled || !message.trim()}
-        aria-label="Send message"
-        className={cn(
-          'flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground',
-          'hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-ring/20',
-          'disabled:cursor-not-allowed disabled:opacity-50',
-          'interactive'
-        )}
-      >
-        <Send className="h-4 w-4" />
-        <span>Send</span>
-      </button>
+      <SendButton />
     </form>
   )
 }
