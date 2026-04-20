@@ -6,6 +6,7 @@ import { QueueDashboard, type QueueRequest } from '@/components/approval/QueueDa
 import { RejectModal } from '@/components/approval/RejectModal'
 import type { StatusCounts } from '@/components/approval/ApprovalPipeline'
 import { lockAction, releaseAction, approveAction, rejectAction } from '@/app/(protected)/approvals/actions'
+import { ApprovalStatus } from '@/lib/approvals/types'
 
 type OptimisticPatch =
   | { type: 'lock'; id: string; reviewerId: string }
@@ -26,12 +27,12 @@ function applyPatch(requests: QueueRequest[], patch: OptimisticPatch): QueueRequ
       case 'lock':
         return {
           ...r,
-          status: 'REVIEWING',
+          status: ApprovalStatus.Reviewing,
           assignee: { id: patch.reviewerId, name: null, email: null },
           lockExpiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
         }
       case 'release':
-        return { ...r, status: 'PENDING', assignee: null, lockExpiresAt: null }
+        return { ...r, status: ApprovalStatus.Pending, assignee: null, lockExpiresAt: null }
       case 'approve':
       case 'reject':
         return r // removed from active queue on server refresh via SSE
@@ -61,8 +62,8 @@ export function QueueClient({ initialRequests, initialCounts, currentUserId }: Q
 
   const displayCounts = useMemo(
     () => ({
-      PENDING: optimisticRequests.filter((r) => r.status === 'PENDING').length,
-      REVIEWING: optimisticRequests.filter((r) => r.status === 'REVIEWING').length,
+      PENDING: optimisticRequests.filter((r) => r.status === ApprovalStatus.Pending).length,
+      REVIEWING: optimisticRequests.filter((r) => r.status === ApprovalStatus.Reviewing).length,
       APPROVED: initialCounts.APPROVED,
       REJECTED: initialCounts.REJECTED,
     }),

@@ -1,12 +1,13 @@
 import { describe, it, expect, beforeAll } from 'vitest'
+import { setAuthEnvStub } from '../../../helpers/authEnv'
 
-beforeAll(() => {
-  process.env.AZURE_AD_CLIENT_ID = 'client-xxx'
-  process.env.AZURE_AD_CLIENT_SECRET = 'secret-xxx'
-  process.env.AZURE_AD_TENANT_ID = 'tenant-xxx'
-  process.env.APP_URL = 'http://localhost:3000'
-  process.env.AUTH_SESSION_SECRET = '0123456789abcdef0123456789abcdef0123456789abcdef'
-})
+beforeAll(() =>
+  setAuthEnvStub({
+    AZURE_AD_CLIENT_ID: 'client-xxx',
+    AZURE_AD_CLIENT_SECRET: 'secret-xxx',
+    AZURE_AD_TENANT_ID: 'tenant-xxx',
+  })
+)
 
 describe('getMsalClient', () => {
   it('returns a ConfidentialClientApplication instance', async () => {

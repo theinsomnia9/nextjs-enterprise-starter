@@ -2,7 +2,7 @@ import { notFound as nextNotFound } from 'next/navigation'
 import { approvalService } from '@/services/approvalService'
 import { AppError, ErrorCode } from '@/lib/errors/AppError'
 import { DetailClient } from './_components/DetailClient'
-import type { QueueRequest } from '@/components/approval/QueueDashboard'
+import { toQueueRequest } from '@/lib/approvals/serialize'
 
 interface ApprovalDetailPageProps {
   params: Promise<{ id: string }>
@@ -23,18 +23,5 @@ export default async function ApprovalDetailPage({ params }: ApprovalDetailPageP
     throw err
   }
 
-  const serialized: QueueRequest = {
-    id: request.id,
-    title: request.title,
-    category: request.category,
-    status: request.status,
-    priorityScore: request.priorityScore,
-    requester: request.requester,
-    assignee: request.assignee,
-    lockedAt: request.lockedAt?.toISOString() ?? null,
-    lockExpiresAt: request.lockExpiresAt?.toISOString() ?? null,
-    submittedAt: request.submittedAt.toISOString(),
-  }
-
-  return <DetailClient request={serialized} />
+  return <DetailClient request={toQueueRequest(request)} />
 }

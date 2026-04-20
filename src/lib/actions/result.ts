@@ -4,8 +4,8 @@
 
 import { ZodError } from 'zod'
 import { createSpan } from '@/lib/telemetry/tracing'
-import { AppError } from '@/lib/errors/AppError'
-import { getActor } from '@/lib/auth/actor'
+import { AppError, ErrorCode } from '@/lib/errors/AppError'
+import { getActor, type Actor } from '@/lib/auth/actor'
 
 export type ActionResult<T> =
   | { ok: true; data: T }
@@ -29,16 +29,16 @@ function zodFields(err: ZodError): Record<string, string> {
 
 export async function wrapAction<T>(
   actionName: string,
-  fn: (actor: { id: string }) => Promise<T>
+  fn: (actor: Actor) => Promise<T>
 ): Promise<ActionResult<T>> {
-  let actor: { id: string }
+  let actor: Actor
   try {
     actor = await getActor()
   } catch (err) {
     if (err instanceof AppError) {
       return { ok: false, error: { code: err.code, message: err.message } }
     }
-    return { ok: false, error: { code: 'UNAUTHORIZED', message: 'Sign in required' } }
+    return { ok: false, error: { code: ErrorCode.UNAUTHORIZED, message: 'Sign in required' } }
   }
 
   return createSpan(`action.${actionName}`, async (span) => {
@@ -53,7 +53,7 @@ export async function wrapAction<T>(
         return {
           ok: false,
           error: {
-            code: 'VALIDATION',
+            code: ErrorCode.VALIDATION_ERROR,
             message: 'Invalid input',
             fields: zodFields(err),
           },
@@ -72,7 +72,7 @@ export async function wrapAction<T>(
       })
       return {
         ok: false,
-        error: { code: 'INTERNAL', message: 'Something went wrong' },
+        error: { code: ErrorCode.INTERNAL_ERROR, message: 'Something went wrong' },
       } satisfies ActionResult<T>
     }
   })

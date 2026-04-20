@@ -7,6 +7,7 @@ export const GET = withApi<{ chatId: string }>('chat.messages.get', async (_req,
   const messages = await prisma.message.findMany({
     where: { chatId },
     orderBy: { createdAt: 'asc' },
+    take: 200,
   })
   return NextResponse.json({ messages })
 })

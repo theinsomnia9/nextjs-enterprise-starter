@@ -49,6 +49,7 @@ describe('GET /api/chat/[chatId]/messages', () => {
     expect(prisma.message.findMany).toHaveBeenCalledWith({
       where: { chatId },
       orderBy: { createdAt: 'asc' },
+      take: 200,
     })
   })
 

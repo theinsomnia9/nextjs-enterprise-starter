@@ -64,7 +64,7 @@ export const lockedByOther = (lockedBy?: string) =>
 export const notCurrentReviewer = () =>
   new AppError({
     statusCode: 403,
-    code: ErrorCode.UNAUTHORIZED,
+    code: ErrorCode.FORBIDDEN,
     message: 'You are not the current reviewer',
   })
 
@@ -82,4 +82,11 @@ export const forbidden = (requiredRoles: string[]) =>
     code: ErrorCode.FORBIDDEN,
     message: `Requires role: ${requiredRoles.join(' or ')}`,
     details: { requiredRoles },
+  })
+
+export const unauthorized = (message = 'Sign in required') =>
+  new AppError({
+    statusCode: 401,
+    code: ErrorCode.UNAUTHORIZED,
+    message,
   })
