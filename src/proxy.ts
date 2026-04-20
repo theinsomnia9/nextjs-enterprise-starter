@@ -3,7 +3,7 @@ import { decodeSession } from '@/lib/auth/session'
 import { authConfig } from '@/lib/auth/config'
 import { SESSION_HEADER } from '@/lib/auth/sessionHeader'
 
-// Edge runtime is the default for middleware in Next.js; keep it so.
+// Edge runtime is the default for proxy in Next.js; keep it so.
 export const config = {
   // Match everything except Next.js internals and static assets.
   matcher: ['/((?!_next/static|_next/image|favicon\\.ico|.*\\.(?:png|jpg|jpeg|gif|svg|webp|ico)$).*)'],
@@ -35,7 +35,7 @@ function scrubbedRequestHeaders(req: NextRequest): Headers {
   return h
 }
 
-export async function middleware(req: NextRequest): Promise<NextResponse> {
+export async function proxy(req: NextRequest): Promise<NextResponse> {
   const { pathname } = req.nextUrl
   const forwardHeaders = scrubbedRequestHeaders(req)
 

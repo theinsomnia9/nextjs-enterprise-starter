@@ -36,32 +36,32 @@ async function freshCookie() {
   })
 }
 
-describe('middleware', () => {
+describe('proxy', () => {
   it('redirects unauthenticated requests to /auth/signin with returnTo', async () => {
-    const { middleware } = await import('@/middleware')
-    const res = await middleware(mkRequest('/approvals'))
+    const { proxy } = await import('@/proxy')
+    const res = await proxy(mkRequest('/approvals'))
     expect(res.status).toBe(307)
     expect(res.headers.get('location')).toContain('/auth/signin')
     expect(res.headers.get('location')).toContain('returnTo=%2Fapprovals')
   })
 
   it('allows /auth/* without a session', async () => {
-    const { middleware } = await import('@/middleware')
-    const res = await middleware(mkRequest('/auth/signin'))
+    const { proxy } = await import('@/proxy')
+    const res = await proxy(mkRequest('/auth/signin'))
     expect(res.status).toBe(200) // NextResponse.next() yields 200
   })
 
   it('allows authenticated requests to pass through', async () => {
     const cookie = `session=${encodeURIComponent(await freshCookie())}`
-    const { middleware } = await import('@/middleware')
-    const res = await middleware(mkRequest('/approvals', cookie))
+    const { proxy } = await import('@/proxy')
+    const res = await proxy(mkRequest('/approvals', cookie))
     expect(res.status).toBe(200)
   })
 
   it('redirects when session cookie is tampered', async () => {
     const cookie = `session=not-a-valid-jwe`
-    const { middleware } = await import('@/middleware')
-    const res = await middleware(mkRequest('/approvals', cookie))
+    const { proxy } = await import('@/proxy')
+    const res = await proxy(mkRequest('/approvals', cookie))
     expect(res.status).toBe(307)
     expect(res.headers.get('location')).toContain('/auth/signin')
   })
@@ -69,8 +69,8 @@ describe('middleware', () => {
   it('strips a client-supplied x-auth-session header on public paths', async () => {
     const req = mkRequest('/auth/signin')
     req.headers.set('x-auth-session', '{"userId":"forged","roles":["Admin"]}')
-    const { middleware } = await import('@/middleware')
-    const res = await middleware(req)
+    const { proxy } = await import('@/proxy')
+    const res = await proxy(req)
     expect(res.status).toBe(200)
     expect(res.headers.get('x-middleware-override-headers') ?? '').toContain('x-auth-session')
     expect(res.headers.get('x-middleware-request-x-auth-session')).toBe('')
@@ -78,8 +78,8 @@ describe('middleware', () => {
 
   it('forwards the verified session payload via x-auth-session on authenticated requests', async () => {
     const cookie = `session=${encodeURIComponent(await freshCookie())}`
-    const { middleware } = await import('@/middleware')
-    const res = await middleware(mkRequest('/approvals', cookie))
+    const { proxy } = await import('@/proxy')
+    const res = await proxy(mkRequest('/approvals', cookie))
     expect(res.status).toBe(200)
     const forwarded = res.headers.get('x-middleware-request-x-auth-session') ?? ''
     expect(forwarded).toBeTruthy()
