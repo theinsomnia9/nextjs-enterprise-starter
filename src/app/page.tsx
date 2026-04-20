@@ -23,6 +23,14 @@ const NAV_ROUTES = [
     description: 'Approval queue dashboard for reviewing and actioning workflow requests.',
     badge: 'Queue',
   },
+  {
+    id: 'agent-teams',
+    href: '/agent-teams',
+    label: 'AI Agent Teams',
+    description:
+      'Design multi-agent workflows visually, refine with structured forms, and run them via a chat-driven AI designer.',
+    badge: 'LangGraph',
+  },
 ]
 
 export default function Home() {

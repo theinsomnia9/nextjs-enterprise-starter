@@ -18,7 +18,8 @@ describe('Home Page', () => {
   it('should have a link to the Chat page', () => {
     render(<Home />)
 
-    const link = screen.getByRole('link', { name: /chat/i })
+    const card = screen.getByTestId('nav-card-chat')
+    const link = card.querySelector('a')
     expect(link).toBeInTheDocument()
     expect(link).toHaveAttribute('href', '/chat')
   })
@@ -45,5 +46,6 @@ describe('Home Page', () => {
     expect(screen.getByTestId('nav-card-chat')).toBeInTheDocument()
     expect(screen.getByTestId('nav-card-builder')).toBeInTheDocument()
     expect(screen.getByTestId('nav-card-approvals')).toBeInTheDocument()
+    expect(screen.getByTestId('nav-card-agent-teams')).toBeInTheDocument()
   })
 })
