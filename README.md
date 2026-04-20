@@ -1,342 +1,159 @@
 # Next.js Enterprise Boilerplate
 
-A production-ready Next.js 14 application featuring comprehensive observability, authentication, real-time communication, and workflow management capabilities. Built with Test-Driven Development (TDD) principles and 80%+ code coverage.
+A production-minded Next.js 16 app with Microsoft Entra ID auth, full OpenTelemetry observability, streaming chat (plain + LangGraph agent), a visual workflow canvas, and a priority-scored approvals queue. Built TDD-first with an 80% coverage gate.
 
-## Features
+## Stack
 
-- ✅ **Full Observability Stack** - OpenTelemetry with Jaeger, Prometheus, and Grafana
-- ✅ **Real-time Chat** - OpenAI GPT-4o-mini streaming via Server-Sent Events with history persistence
-- ✅ **Visual Workflow Builder** - Drag-and-drop workflow creation with ReactFlow
-- ✅ **Approval Queue** - Priority-scored approval workflow with Yjs real-time collaboration and Pusher broadcasting
-- ✅ **PostgreSQL Database** - Type-safe database operations with Prisma ORM
-- ✅ **Comprehensive Testing** - Vitest (164+ unit tests), Playwright (E2E), MSW (mocking)
-- ✅ **Modern UI** - Tailwind CSS with dark/light theme toggle
-- ✅ **Type Safety** - Full TypeScript implementation with strict mode
-- ✅ **Docker Infrastructure** - Complete local development environment
-- ✅ **Microsoft Entra ID Authentication** - MSAL Node OAuth 2.0 code+PKCE, JWE session cookies, role-based authz
-
-## Tech Stack
-
-- **Framework:** Next.js 14 (App Router)
-- **Language:** TypeScript
-- **Database:** PostgreSQL + Prisma ORM
-- **Auth:** MSAL Node (Microsoft Entra ID, single-tenant) + jose for JWE session cookies
-- **Observability:** OpenTelemetry (OTLP), Jaeger, Prometheus, Grafana
-- **Real-time:** Server-Sent Events (SSE) + Pusher + Yjs (CRDT collaboration)
-- **AI:** OpenAI SDK (GPT-4o-mini streaming)
-- **Workflows:** ReactFlow
-- **Styling:** Tailwind CSS (dark/light mode via CSS variables)
-- **Testing:** Vitest + Playwright + MSW
-- **Containerization:** Docker + Docker Compose
-
-## Authentication
-
-This project uses **Microsoft Entra ID** (single-tenant) via **MSAL Node** with encrypted session cookies. There is no dev fallback — every environment needs a working Entra config.
-
-### Set up a free Entra tenant (for local dev)
-
-1. Join the free **[Microsoft 365 Developer Program](https://developer.microsoft.com/microsoft-365/dev-program)** — gives you a sandbox tenant with ~25 test users.
-2. In the Azure/Entra portal for that tenant, create an **App registration**:
-   - **Supported account types:** *Accounts in this organizational directory only (single tenant)*.
-   - **Redirect URI (Web):** `http://localhost:3000/auth/callback`.
-   - Copy the **Application (client) ID** → `AZURE_AD_CLIENT_ID`.
-   - Copy the **Directory (tenant) ID** → `AZURE_AD_TENANT_ID`.
-   - Create a **Client secret** (Certificates & secrets → New client secret). Copy the *Value* → `AZURE_AD_CLIENT_SECRET`.
-3. Define **App Roles** in the app registration manifest — three values: `Admin`, `Approver`, `Requester`. "Allowed member types": `Users/Groups`.
-4. Under **Enterprise applications** → your app → **Users and groups**, assign yourself (or test users) to one of the app roles. "Assignment required?" should be **No** (users with no role default to `Requester`).
-
-### Configure `.env`
-
-```
-AZURE_AD_CLIENT_ID=<from app registration>
-AZURE_AD_CLIENT_SECRET=<from app registration>
-AZURE_AD_TENANT_ID=<from app registration>
-APP_URL=http://localhost:3000
-AUTH_SESSION_SECRET=<openssl rand -base64 32>
-```
-
-### Roles
-
-| Role | Permissions |
+| | |
 |---|---|
-| `Admin` | Everything — approve/reject, edit PriorityConfig |
-| `Approver` | Lock / release / approve / reject approval requests |
-| `Requester` (default) | Submit and view own requests |
-
-Role checks live next to the Server Action that performs each verb — see `src/lib/auth/requireRole.ts`.
+| Framework | Next.js 16 (App Router) · React 19 |
+| Language | TypeScript (strict) |
+| Database | PostgreSQL · Prisma 5 |
+| Auth | Microsoft Entra ID via MSAL Node (single-tenant, PKCE) · JWE session cookies via `jose` |
+| AI | OpenAI GPT-4o-mini · LangGraph agent (`langchain` v1) with Tavily + `mathjs` tools |
+| Real-time | Server-Sent Events (SSE) · Yjs (canvas CRDT) |
+| Observability | OpenTelemetry → OTLP collector → Jaeger + Prometheus + Grafana |
+| Styling | Tailwind CSS (class-based dark mode, CSS variables) |
+| Testing | Vitest (unit + integration) · Playwright (E2E) · MSW |
+| Container | Docker + Docker Compose (local infra) |
 
 ## Prerequisites
 
-- Node.js 20+ and npm
-- Docker and Docker Compose
-- PostgreSQL (or use Docker Compose setup)
-- Microsoft Azure account (for Entra ID setup)
+- Node 20+
+- Docker / OrbStack
+- A Microsoft Entra tenant (free M365 Developer tenant works — see setup guide)
 
-## Quick Start
-
-### 1. Clone and Install
+## Quick start
 
 ```bash
 git clone <your-repo-url>
 cd nextjs-boiler-plate
 npm install
-```
 
-### 2. Environment Setup
-
-Copy the example environment file and configure it:
-
-```bash
-cp .env.example .env
-```
-
-Edit `.env` and configure:
-- `DATABASE_URL` - PostgreSQL connection string
-- `OPENAI_API_KEY` - Required for chat feature (get from platform.openai.com)
-- `NEXTAUTH_SECRET` - Random secret for NextAuth session signing
-- `NEXTAUTH_URL` - Your app URL (default: `http://localhost:3000`)
-- OpenTelemetry settings (optional, defaults work with local infra)
-
-### 3. Start Infrastructure
-
-Start the complete observability stack with Docker Compose:
-
-```bash
-npm run infra:up
-```
-
-This starts:
-- PostgreSQL (port 5432)
-- PostgreSQL Test DB (port 5433)
-- OpenTelemetry Collector (ports 4317, 4318)
-- Jaeger UI (http://localhost:16686)
-- Prometheus (http://localhost:9090)
-- Grafana (http://localhost:3001) - admin/admin
-
-### 4. Database Setup
-
-Run Prisma migrations:
-
-```bash
-npm run db:generate
+cp .env.example .env              # Fill in values — see below
+npm run infra:up                  # Postgres + OTEL stack
 npm run db:migrate
 npm run db:seed
-```
-
-### 5. Run Development Server
-
-```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Open http://localhost:3000. Middleware redirects you to `/auth/signin` — there's no dev fallback.
 
-## Testing
+## Environment
 
-### Run All Tests
-
-```bash
-npm test
-```
-
-### Unit Tests
+Minimum required in `.env` (see `.env.example` for the full list):
 
 ```bash
-npm run test:unit
+DATABASE_URL=postgresql://user:password@localhost:5432/nextjs_boilerplate
+APP_URL=http://localhost:3000
+AUTH_SESSION_SECRET=$(openssl rand -base64 32)
+
+# From your Entra app registration (docs/entra-id-local-setup.md)
+AZURE_AD_CLIENT_ID=...
+AZURE_AD_CLIENT_SECRET=...
+AZURE_AD_TENANT_ID=...
+
+OPENAI_API_KEY=sk-...              # chat + agent
+TAVILY_API_KEY=tvly-...            # agent web search tool
+CRON_SECRET=...                    # protects /api/cron/*
 ```
 
-### Integration Tests
+**Integration tests** use a separate DB on `5433` (provided by the Docker stack) — configured via `TEST_DATABASE_URL` or `.env.test`.
+
+## Authentication & roles
+
+Every environment needs a real Entra tenant. Three canonical app roles in `src/lib/auth/roles.ts`:
+
+| Role | Can do |
+|---|---|
+| `Admin` | Everything, including editing `PriorityConfig` |
+| `Approver` | Lock / approve / reject approval requests |
+| `Requester` *(default)* | Submit and view own requests |
+
+Authorization is enforced server-side next to each verb via `requireRole()` / `requireAnyRole()`. Client `useSession()` is for cosmetic UI gating only.
+
+Full setup: **[docs/entra-id-local-setup.md](./docs/entra-id-local-setup.md)** (local) · **[docs/azure-production-setup.md](./docs/azure-production-setup.md)** (production runbook).
+
+## Commands
 
 ```bash
-npm run test:integration
+npm run dev              # Dev server
+npm run build            # Production build
+npm test                 # Vitest (watch)
+npm run test:unit        # Vitest with coverage (one-shot)
+npm run test:integration # Integration tests (requires test DB on 5433)
+npm run test:e2e         # Playwright
+npm run lint             # ESLint
+npm run format           # Prettier
+
+npm run db:migrate       # prisma migrate dev
+npm run db:generate      # Regenerate Prisma client
+npm run db:seed          # Seed priority configs
+npm run db:studio        # Prisma Studio UI
+
+npm run infra:up         # Start Docker stack
+npm run infra:down       # Stop Docker stack
+npm run infra:logs       # Tail Docker logs
 ```
-
-### E2E Tests
-
-```bash
-npm run test:e2e
-```
-
-### Coverage Report
-
-```bash
-npm run test:coverage
-```
-
-Coverage thresholds are set to 80% for lines, functions, branches, and statements.
 
 ## Observability
 
-### View Traces
+Dashboards bundled with the local infra:
 
-Open Jaeger UI at http://localhost:16686 to view distributed traces from your application.
+- **Jaeger** — http://localhost:16686 (traces)
+- **Prometheus** — http://localhost:9090 (metrics)
+- **Grafana** — http://localhost:3001 (admin/admin)
 
-### View Metrics
+See [OPENTELEMETRY.md](./OPENTELEMETRY.md) for span naming conventions and how to add custom spans. Infrastructure details in [infra/README.md](./infra/README.md).
 
-- **Prometheus:** http://localhost:9090 - Query and explore metrics
-- **Grafana:** http://localhost:3001 - Pre-configured dashboards (admin/admin)
+## Architecture highlights
 
-### Pre-built Dashboards
+Details in [CLAUDE.md](./CLAUDE.md). The approvals feature is the reference layering:
 
-Grafana includes dashboards for:
-- Next.js application metrics
-- PostgreSQL database performance
-- OpenTelemetry Collector metrics
-- Workflow execution analytics
+1. **Repository** (`src/lib/approvals/repository.ts`) — raw Prisma, implements `IApprovalRepository`
+2. **Service** (`src/services/approvalService.ts`) — business logic, typed `AppError` instances, repo injected via constructor
+3. **Route handler** (`src/app/api/approvals/**`) — Zod input validation → service call → SSE broadcast → `handleApiError`
 
-## Project Structure
+Use this pattern when adding new domain features.
+
+## Project layout
 
 ```
-nextjs-boiler-plate/
-├── src/
-│   ├── app/                    # Next.js App Router
-│   │   ├── api/                # API routes
-│   │   │   ├── chat/           # Chat + SSE streaming endpoints
-│   │   │   ├── approvals/      # Approval queue CRUD + lock endpoints
-│   │   │   ├── cron/           # Lock expiry cron job
-│   │   │   └── pusher/         # Pusher auth endpoint
-│   │   ├── chat/               # Chat page
-│   │   ├── builder/            # Workflow builder page
-│   │   └── approvals/          # Approvals list + [id] detail page
-│   ├── components/             # React components
-│   │   ├── chat/               # Chat UI (ChatMessage, ChatInput, ChatHistory)
-│   │   ├── workflow/           # ReactFlow builder + CustomNode
-│   │   ├── approval/           # QueueDashboard, ApprovalFlowDiagram, ApprovalPipeline
-│   │   └── theme/              # ThemeToggle
-│   ├── lib/                    # Utilities and helpers
-│   │   ├── telemetry/          # OpenTelemetry setup
-│   │   ├── approvals/          # Priority scoring, Yjs client, Pusher, schemas
-│   │   ├── prisma.ts           # Prisma client
-│   │   └── utils.ts            # cn() and shared utilities
-│   ├── providers/              # React context providers (ThemeProvider)
-│   └── instrumentation.ts      # Next.js OTEL instrumentation hook
-├── prisma/                     # Database schema and migrations
-├── __tests__/                  # Test files
-│   ├── unit/                   # 164+ unit tests (Vitest)
-│   ├── e2e/                    # E2E tests (Playwright)
-│   ├── mocks/                  # MSW handlers
-│   └── setup/                  # Test utilities and vitest setup
-├── infra/                      # Infrastructure configuration
-│   ├── docker-compose.yml      # Complete local stack
-│   ├── otel-collector-config.yaml
-│   ├── prometheus/
-│   ├── grafana/
-│   └── scripts/
-└── scripts/                    # Shell scripts (start/stop infra)
+src/
+├── app/                         # Next.js App Router
+│   ├── api/                     # Route handlers: chat, approvals, cron, sse, agent-teams
+│   ├── (protected)/             # Auth-gated route group
+│   ├── auth/                    # signin / callback / signout (Node runtime)
+│   ├── chat/ · builder/ · agent-teams/
+│   └── layout.tsx · page.tsx
+├── components/                  # UI (chat, workflow, approval, agentTeams, theme, nav)
+├── lib/                         # Domain + infra (approvals, auth, agent, chat, sse, telemetry, errors)
+├── services/                    # approvalService.ts, agentTeamService.ts
+├── providers/                   # ThemeProvider, SessionProvider
+├── middleware.ts                # Edge session gate
+└── instrumentation.ts           # OTEL entry point
+
+__tests__/
+├── unit/ · integration/ · e2e/
+├── mocks/                       # MSW + Entra mocks
+└── helpers/ · setup/
+
+prisma/      # schema.prisma, migrations/, seed.js
+infra/       # docker-compose + otel/prometheus/grafana config
+docs/        # feature reference + auth runbooks + superpowers specs
 ```
 
 ## Documentation
 
-- [TDD Workflow Guide](./TDD.md)
-- [OpenTelemetry Standards](./OPENTELEMETRY.md)
-- [Infrastructure Setup](./INFRASTRUCTURE.md)
-- [Chat Implementation](./CHAT_IMPLEMENTATION.md)
-- [Workflow Builder](./WORKFLOW_BUILDER.md)
-- [Theme Options](./THEME_OPTIONS.md)
-- [infra/ README](./infra/README.md)
-
-## Development Workflow
-
-### Following TDD Principles
-
-1. **Write tests first** - Create failing tests for new features
-2. **Implement** - Write minimal code to pass tests
-3. **Refactor** - Improve code while maintaining test coverage
-4. **Verify** - Run `npm run test:coverage` to ensure 80%+ coverage
-
-See [TDD.md](./TDD.md) for detailed workflow.
-
-### Adding New Features
-
-1. Create test file in `__tests__/unit/` or `__tests__/integration/`
-2. Write failing tests
-3. Implement feature
-4. Verify tests pass
-5. Add E2E test if needed
-6. Check coverage
-
-## Production Deployment
-
-### Build Application
-
-```bash
-npm run build
-npm start
-```
-
-### Docker Production Build
-
-```bash
-docker build -t nextjs-boilerplate .
-docker run -p 3000:3000 nextjs-boilerplate
-```
-
-### Environment Variables
-
-Ensure all production environment variables are set:
-- Database URL (production PostgreSQL)
-- NextAuth configuration
-- Entra ID credentials
-- OpenTelemetry collector endpoint
-
-## Common Commands
-
-```bash
-npm run dev              # Start development server
-npm run build            # Build for production
-npm start                # Start production server
-npm test                 # Run all tests
-npm run test:coverage    # Run tests with coverage
-npm run lint             # Run ESLint
-npm run format           # Format code with Prettier
-npm run db:generate      # Regenerate Prisma client
-npm run db:migrate       # Run database migrations (dev)
-npm run db:seed          # Seed the database
-npm run db:studio        # Open Prisma Studio
-npm run infra:up         # Start infrastructure
-npm run infra:down       # Stop infrastructure
-npm run infra:logs       # View infrastructure logs
-```
-
-## Troubleshooting
-
-### Database Connection Issues
-
-Ensure PostgreSQL is running:
-```bash
-npm run infra:up
-```
-
-Check database logs:
-```bash
-docker logs nextjs-postgres
-```
-
-### OpenTelemetry Not Sending Data
-
-1. Check collector is running: `docker ps | grep otel-collector`
-2. View collector logs: `docker logs otel-collector`
-3. Verify endpoint in `.env`: `OTEL_EXPORTER_OTLP_ENDPOINT`
-
-### Tests Failing
-
-1. Ensure test database is running
-2. Run migrations on test database
-3. Clear test cache: `npm run test -- --clearCache`
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Write tests for your changes
-4. Implement your feature
-5. Ensure tests pass and coverage is maintained
-6. Submit a pull request
+- **[CLAUDE.md](./CLAUDE.md)** — architecture reference (source of truth for agents/contributors)
+- **[TDD.md](./TDD.md)** — project testing conventions
+- **[OPENTELEMETRY.md](./OPENTELEMETRY.md)** — tracing conventions
+- **[infra/README.md](./infra/README.md)** — Docker stack details
+- **[docs/entra-id-local-setup.md](./docs/entra-id-local-setup.md)** — Entra tenant + app registration walkthrough
+- **[docs/azure-production-setup.md](./docs/azure-production-setup.md)** — production deployment runbook
+- **[docs/features/](./docs/features/)** — per-feature reference: [chat](./docs/features/chat.md) · [workflow-builder](./docs/features/workflow-builder.md) · [theming](./docs/features/theming.md)
+- **[docs/superpowers/](./docs/superpowers/)** — archived design specs and implementation plans
 
 ## License
 
 MIT
-
-## Support
-
-For issues and questions, please open an issue on GitHub.
