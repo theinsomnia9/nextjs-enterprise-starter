@@ -43,7 +43,7 @@ describe('wrapAction', () => {
     expect(result).toEqual({
       ok: false,
       error: {
-        code: 'VALIDATION',
+        code: 'VALIDATION_ERROR',
         message: 'Invalid input',
         fields: { name: 'name required' },
       },
@@ -79,7 +79,7 @@ describe('wrapAction', () => {
     })
     expect(result).toEqual({
       ok: false,
-      error: { code: 'INTERNAL', message: 'Something went wrong' },
+      error: { code: 'INTERNAL_ERROR', message: 'Something went wrong' },
     })
   })
 

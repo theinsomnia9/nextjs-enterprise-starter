@@ -4,7 +4,7 @@
 
 import { ZodError } from 'zod'
 import { createSpan } from '@/lib/telemetry/tracing'
-import { AppError } from '@/lib/errors/AppError'
+import { AppError, ErrorCode } from '@/lib/errors/AppError'
 import { getActor } from '@/lib/auth/actor'
 
 export type ActionResult<T> =
@@ -38,7 +38,7 @@ export async function wrapAction<T>(
     if (err instanceof AppError) {
       return { ok: false, error: { code: err.code, message: err.message } }
     }
-    return { ok: false, error: { code: 'UNAUTHORIZED', message: 'Sign in required' } }
+    return { ok: false, error: { code: ErrorCode.UNAUTHORIZED, message: 'Sign in required' } }
   }
 
   return createSpan(`action.${actionName}`, async (span) => {
@@ -53,7 +53,7 @@ export async function wrapAction<T>(
         return {
           ok: false,
           error: {
-            code: 'VALIDATION',
+            code: ErrorCode.VALIDATION_ERROR,
             message: 'Invalid input',
             fields: zodFields(err),
           },
@@ -72,7 +72,7 @@ export async function wrapAction<T>(
       })
       return {
         ok: false,
-        error: { code: 'INTERNAL', message: 'Something went wrong' },
+        error: { code: ErrorCode.INTERNAL_ERROR, message: 'Something went wrong' },
       } satisfies ActionResult<T>
     }
   })

@@ -10,9 +10,7 @@ import {
   rejectSchema,
 } from '@/lib/approvals/schemas'
 import { requireAnyRole } from '@/lib/auth/requireRole'
-import { Role } from '@/lib/auth/roles'
-
-const APPROVER_ROLES: readonly Role[] = [Role.Approver, Role.Admin]
+import { APPROVER_ROLES } from '@/lib/auth/roles'
 
 async function safeBroadcast(event: Parameters<typeof broadcastApprovalEvent>[0], data: Record<string, unknown>) {
   try {

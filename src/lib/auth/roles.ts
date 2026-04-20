@@ -6,6 +6,8 @@ export const Role = {
 
 export type Role = (typeof Role)[keyof typeof Role]
 
+export const APPROVER_ROLES: readonly Role[] = [Role.Approver, Role.Admin]
+
 const KNOWN_ROLES: readonly Role[] = [Role.Admin, Role.Approver, Role.Requester]
 
 export function parseRolesClaim(claim: unknown): Role[] {

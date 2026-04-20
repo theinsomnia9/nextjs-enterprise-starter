@@ -19,19 +19,24 @@ export type SessionInput = Omit<SessionPayload, 'iat' | 'exp'>
 // cookies fail to decode cleanly rather than decrypting to garbage.
 const HKDF_INFO = new TextEncoder().encode('nbp-auth-session:a256gcm:v1')
 
+// Cache the derived key keyed on the secret so HKDF runs once per process
+// (re-derives only when the secret changes, e.g. tests swapping it between imports).
+let cachedKey: { secret: string; key: CryptoKey } | null = null
+
 async function getKey(): Promise<CryptoKey> {
-  // Read process.env directly so key derivation always reflects the current secret
-  // (important for tests that swap secrets between imports).
   const secret = process.env.AUTH_SESSION_SECRET ?? authConfig.sessionSecret
+  if (cachedKey && cachedKey.secret === secret) return cachedKey.key
   const ikm = new TextEncoder().encode(secret)
   const ikmKey = await crypto.subtle.importKey('raw', ikm, 'HKDF', false, ['deriveKey'])
-  return crypto.subtle.deriveKey(
+  const key = await crypto.subtle.deriveKey(
     { name: 'HKDF', hash: 'SHA-256', salt: new Uint8Array(), info: HKDF_INFO },
     ikmKey,
     { name: 'AES-GCM', length: 256 },
     false,
     ['encrypt', 'decrypt']
   )
+  cachedKey = { secret, key }
+  return key
 }
 
 export async function encodeSession(
