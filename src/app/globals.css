@@ -98,3 +98,58 @@
     @apply transition-all duration-200 ease-out hover:shadow-md hover:border-border/80;
   }
 }
+
+/* Agent Team Builder: neutralize reactflow's default node wrapper styling so
+   only our custom BaseNode renders. Type names like `output` and `input` are
+   reserved by reactflow and ship with default background/border/padding. */
+.agent-team-flow .react-flow__node-trigger,
+.agent-team-flow .react-flow__node-agent,
+.agent-team-flow .react-flow__node-tool,
+.agent-team-flow .react-flow__node-guardrail,
+.agent-team-flow .react-flow__node-output {
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  width: auto;
+}
+
+/* Agent Team Builder: reactflow's controls + minimap ship with hardcoded
+   light-mode colors (#fefefe, #eee, #fff) on `.react-flow__controls-button`
+   and similar. Their selectors use `!important`-equivalent specificity once
+   the stylesheet is imported after ours, so we override with `!important`
+   against theme tokens to stay consistent in both modes. */
+.agent-team-flow .react-flow__controls {
+  background: hsl(var(--card)) !important;
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
+.agent-team-flow .react-flow__controls-button {
+  background: hsl(var(--card)) !important;
+  border-bottom: 1px solid hsl(var(--border)) !important;
+  color: hsl(var(--foreground));
+  fill: hsl(var(--foreground));
+}
+.agent-team-flow .react-flow__controls-button:hover {
+  background: hsl(var(--muted)) !important;
+}
+.agent-team-flow .react-flow__controls-button svg {
+  fill: hsl(var(--foreground));
+}
+.agent-team-flow .react-flow__minimap {
+  background-color: hsl(var(--card)) !important;
+}
+.agent-team-flow .react-flow__minimap-mask {
+  fill: hsl(var(--muted) / 0.5);
+}
+.agent-team-flow .react-flow__background path,
+.agent-team-flow .react-flow__background circle {
+  fill: hsl(var(--muted-foreground) / 0.35);
+}
+.agent-team-flow .react-flow__attribution {
+  background: hsl(var(--card) / 0.8) !important;
+  color: hsl(var(--muted-foreground));
+}
+.agent-team-flow .react-flow__attribution a {
+  color: hsl(var(--muted-foreground));
+}

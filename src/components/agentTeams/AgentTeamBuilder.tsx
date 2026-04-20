@@ -290,14 +290,17 @@ function BuilderInner({ team }: AgentTeamBuilderProps) {
               setSelectedNodeId(sel[0]?.id ?? null)
             }
             fitView
-            className="bg-background"
+            className="agent-team-flow bg-background"
           >
             <MiniMap
               nodeStrokeWidth={3}
-              className="border border-border bg-card"
+              className="border border-border"
+              style={{ backgroundColor: 'hsl(var(--card))' }}
+              maskColor="hsl(var(--muted) / 0.6)"
+              nodeStrokeColor="hsl(var(--border))"
               nodeColor={(n) => NODE_REGISTRY[(n.type ?? 'agent') as NodeKind].color}
             />
-            <Controls className="border border-border bg-card" />
+            <Controls className="border border-border" />
             <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
           </ReactFlow>
         </div>
