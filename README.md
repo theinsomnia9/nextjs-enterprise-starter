@@ -15,12 +15,12 @@ A production-minded Next.js 16 app with Microsoft Entra ID auth, full OpenTeleme
 | Observability | OpenTelemetry → OTLP collector → Jaeger + Prometheus + Grafana |
 | Styling | Tailwind CSS (class-based dark mode, CSS variables) |
 | Testing | Vitest (unit + integration) · Playwright (E2E) · MSW |
-| Container | Docker + Docker Compose (local infra) |
+| Container | Docker Compose or Podman Compose (local infra) |
 
 ## Prerequisites
 
 - Node 20+
-- Docker / OrbStack
+- A container engine: Docker (Docker Desktop / OrbStack / Colima) **or** Podman (`podman machine` on macOS/Windows). The `infra:*` scripts auto-detect either engine.
 - A Microsoft Entra tenant (free M365 Developer tenant works — see setup guide)
 
 ## Quick start
@@ -91,9 +91,9 @@ npm run db:generate      # Regenerate Prisma client
 npm run db:seed          # Seed priority configs
 npm run db:studio        # Prisma Studio UI
 
-npm run infra:up         # Start Docker stack
-npm run infra:down       # Stop Docker stack
-npm run infra:logs       # Tail Docker logs
+npm run infra:up         # Start infra stack (Docker or Podman — auto-detected)
+npm run infra:down       # Stop infra stack
+npm run infra:logs       # Tail infra logs
 ```
 
 ## Observability

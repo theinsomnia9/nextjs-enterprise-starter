@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Script to stop infrastructure
+# Tail logs from the infrastructure stack
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -15,7 +15,4 @@ if ! detect_compose; then
   exit 1
 fi
 
-echo "🛑 Stopping infrastructure via: $COMPOSE"
-$COMPOSE -f "$COMPOSE_FILE" down
-
-echo "✅ Infrastructure stopped successfully!"
+exec $COMPOSE -f "$COMPOSE_FILE" logs -f "$@"
