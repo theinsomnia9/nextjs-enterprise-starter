@@ -8,10 +8,12 @@ export type CookieOptions = {
   maxAge: number
 }
 
+const isHttps = authConfig.appUrl.startsWith('https://')
+
 export function sessionCookieOptions(): CookieOptions {
   return {
     httpOnly: true,
-    secure: true,
+    secure: isHttps,
     sameSite: 'lax',
     path: '/',
     maxAge: authConfig.sessionTtlSeconds,
@@ -25,7 +27,7 @@ export function clearSessionCookieOptions(): CookieOptions {
 export function oauthPendingCookieOptions(): CookieOptions {
   return {
     httpOnly: true,
-    secure: true,
+    secure: isHttps,
     sameSite: 'lax',
     path: '/auth/callback',
     maxAge: authConfig.oauthPendingTtlSeconds,
