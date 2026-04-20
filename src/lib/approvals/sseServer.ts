@@ -26,7 +26,22 @@ if (!globalForSSE.sseClients) {
 
 const clients = globalForSSE.sseClients
 
+// Hard cap prevents reconnect storms (or buggy clients in a tight loop) from
+// growing the Set without bound. Evicts the oldest connection via FIFO iteration.
+const MAX_CLIENTS = 500
+
 export function addClient(client: SSEClient): void {
+  if (clients.size >= MAX_CLIENTS) {
+    const oldest = clients.values().next().value
+    if (oldest) {
+      try {
+        oldest.controller.close()
+      } catch {
+        // already closed
+      }
+      clients.delete(oldest)
+    }
+  }
   clients.add(client)
 }
 

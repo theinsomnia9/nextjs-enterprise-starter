@@ -2,64 +2,72 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { ApprovalService } from '@/services/approvalService'
 import type { IApprovalRepository } from '@/lib/approvals/repository'
 
-vi.mock('@/lib/prisma', () => {
-  const txCalls: string[] = []
-  const tx = {
-    approvalRequest: {
-      findUnique: vi.fn().mockResolvedValue({
-        status: 'PENDING',
-        lockExpiresAt: null,
-        assigneeId: null,
-        category: 'P2',
-      }),
-      update: vi.fn().mockImplementation(async (args: unknown) => {
-        txCalls.push('tx.update')
-        return {
-          id: (args as { where: { id: string } }).where.id,
-          assigneeId: 'user-1',
-          status: 'REVIEWING',
-          lockExpiresAt: new Date(),
-          requester: { id: 'r', name: null, email: null },
-          assignee: { id: 'user-1', name: null, email: null },
-        }
-      }),
-    },
-    priorityConfig: {
-      findUnique: vi.fn().mockResolvedValue({ lockTimeoutMinutes: 5 }),
-    },
-    user: { findUnique: vi.fn() },
-  }
+function makeRepo(): IApprovalRepository {
   return {
-    prisma: {
-      $transaction: vi.fn(async (fn: (t: typeof tx) => unknown) => fn(tx)),
-      __txCalls: txCalls,
-    },
-  }
-})
+    findById: vi.fn(),
+    findPendingAndReviewingWithAssignee: vi.fn(),
+    create: vi.fn(),
+    lock: vi.fn(),
+    release: vi.fn(),
+    expireLocks: vi.fn(),
+    getAllPriorityConfigs: vi.fn(),
+    getPriorityConfig: vi.fn(),
+    getStatusCounts: vi.fn(),
+    tryLock: vi.fn(),
+    tryApprove: vi.fn(),
+    tryReject: vi.fn(),
+  } as unknown as IApprovalRepository
+}
 
 describe('ApprovalService.lock', () => {
-  let repoSpy: IApprovalRepository
+  let repo: IApprovalRepository
 
   beforeEach(() => {
-    repoSpy = {
-      findById: vi.fn(),
-      findPendingAndReviewingWithAssignee: vi.fn(),
-      create: vi.fn(),
-      lock: vi.fn(), // MUST NOT BE CALLED after the fix
-      release: vi.fn(),
-      expireLocks: vi.fn(),
-      getAllPriorityConfigs: vi.fn(),
-      getPriorityConfig: vi.fn(),
-    } as unknown as IApprovalRepository
+    repo = makeRepo()
   })
 
-  it('performs the lock update INSIDE the transaction (not via repo.lock)', async () => {
-    const svc = new ApprovalService({ repository: repoSpy })
+  it('delegates the transaction to repo.tryLock and returns its row on success', async () => {
+    const row = {
+      id: 'req-1',
+      status: 'REVIEWING',
+      assigneeId: 'user-1',
+      lockExpiresAt: new Date(),
+      requester: { id: 'r', name: null, email: null },
+      assignee: { id: 'user-1', name: null, email: null },
+    }
+    vi.mocked(repo.tryLock).mockResolvedValue({ ok: true, row: row as never })
+
+    const svc = new ApprovalService({ repository: repo })
     const result = await svc.lock('req-1', 'user-1')
 
-    // The repo.lock path is the bug — it must not be used anymore.
-    expect(repoSpy.lock).not.toHaveBeenCalled()
+    expect(repo.tryLock).toHaveBeenCalledWith('req-1', 'user-1')
+    expect(repo.lock).not.toHaveBeenCalled()
     expect(result.status).toBe('REVIEWING')
-    expect(result.assigneeId).toBe('user-1')
+  })
+
+  it('throws notFound when repo reports not_found', async () => {
+    vi.mocked(repo.tryLock).mockResolvedValue({ ok: false, reason: 'not_found' })
+    const svc = new ApprovalService({ repository: repo })
+    await expect(svc.lock('missing', 'user-1')).rejects.toMatchObject({ code: 'NOT_FOUND' })
+  })
+
+  it('throws alreadyResolved when repo reports already_resolved', async () => {
+    vi.mocked(repo.tryLock).mockResolvedValue({ ok: false, reason: 'already_resolved' })
+    const svc = new ApprovalService({ repository: repo })
+    await expect(svc.lock('req-1', 'user-1')).rejects.toMatchObject({ code: 'ALREADY_RESOLVED' })
+  })
+
+  it('throws lockedByOther with the name when repo reports locked_by_other', async () => {
+    vi.mocked(repo.tryLock).mockResolvedValue({
+      ok: false,
+      reason: 'locked_by_other',
+      lockedByName: 'Bob',
+      lockedById: 'user-2',
+    })
+    const svc = new ApprovalService({ repository: repo })
+    await expect(svc.lock('req-1', 'user-1')).rejects.toMatchObject({
+      code: 'LOCKED_BY_OTHER',
+      details: { lockedBy: 'Bob' },
+    })
   })
 })

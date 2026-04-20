@@ -5,7 +5,7 @@
 import { ZodError } from 'zod'
 import { createSpan } from '@/lib/telemetry/tracing'
 import { AppError, ErrorCode } from '@/lib/errors/AppError'
-import { getActor } from '@/lib/auth/actor'
+import { getActor, type Actor } from '@/lib/auth/actor'
 
 export type ActionResult<T> =
   | { ok: true; data: T }
@@ -29,9 +29,9 @@ function zodFields(err: ZodError): Record<string, string> {
 
 export async function wrapAction<T>(
   actionName: string,
-  fn: (actor: { id: string }) => Promise<T>
+  fn: (actor: Actor) => Promise<T>
 ): Promise<ActionResult<T>> {
-  let actor: { id: string }
+  let actor: Actor
   try {
     actor = await getActor()
   } catch (err) {

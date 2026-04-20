@@ -1,21 +1,5 @@
-import { EncryptJWT } from 'jose'
+import { encodeSession } from '@/lib/auth/session'
 import type { Role } from '@/lib/auth/roles'
-
-// Must match src/lib/auth/session.ts exactly — forged cookies are indistinguishable
-// from production.
-const HKDF_INFO = new TextEncoder().encode('nbp-auth-session:a256gcm:v1')
-
-async function getKey(secret: string): Promise<CryptoKey> {
-  const ikm = new TextEncoder().encode(secret)
-  const ikmKey = await crypto.subtle.importKey('raw', ikm, 'HKDF', false, ['deriveKey'])
-  return crypto.subtle.deriveKey(
-    { name: 'HKDF', hash: 'SHA-256', salt: new Uint8Array(), info: HKDF_INFO },
-    ikmKey,
-    { name: 'AES-GCM', length: 256 },
-    false,
-    ['encrypt', 'decrypt']
-  )
-}
 
 export async function buildSessionCookie(args: {
   userId: string
@@ -27,25 +11,21 @@ export async function buildSessionCookie(args: {
   ttlSeconds?: number
   secret?: string
 }): Promise<string> {
-  const secret = args.secret ?? process.env.AUTH_SESSION_SECRET ?? ''
-  if (secret.length < 32)
-    throw new Error('AUTH_SESSION_SECRET must be >= 32 chars for mock session')
-
-  const now = Math.floor(Date.now() / 1000)
-  const ttl = args.ttlSeconds ?? 12 * 60 * 60
-
-  const key = await getKey(secret)
-
-  return await new EncryptJWT({
-    userId: args.userId,
-    entraOid: args.entraOid ?? `oid-${args.userId}`,
-    roles: args.roles,
-    name: args.name ?? null,
-    email: args.email ?? null,
-    photoUrl: args.photoUrl ?? null,
-  })
-    .setProtectedHeader({ alg: 'dir', enc: 'A256GCM' })
-    .setIssuedAt(now)
-    .setExpirationTime(now + ttl)
-    .encrypt(key)
+  const prevSecret = process.env.AUTH_SESSION_SECRET
+  if (args.secret) process.env.AUTH_SESSION_SECRET = args.secret
+  try {
+    return await encodeSession(
+      {
+        userId: args.userId,
+        entraOid: args.entraOid ?? `oid-${args.userId}`,
+        roles: args.roles,
+        name: args.name ?? null,
+        email: args.email ?? null,
+        photoUrl: args.photoUrl ?? null,
+      },
+      { ttlSeconds: args.ttlSeconds }
+    )
+  } finally {
+    if (args.secret) process.env.AUTH_SESSION_SECRET = prevSecret
+  }
 }

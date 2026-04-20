@@ -1,13 +1,8 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest'
+import { setAuthEnvStub } from '../../../helpers/authEnv'
 
-beforeAll(() => {
-  process.env.AUTH_SESSION_SECRET = '0123456789abcdef0123456789abcdef0123456789abcdef'
-  process.env.APP_URL = 'http://localhost:3000'
-  process.env.AZURE_AD_CLIENT_ID = 'x'
-  process.env.AZURE_AD_CLIENT_SECRET = 'x'
-  process.env.AZURE_AD_TENANT_ID = 'x'
-})
+beforeAll(() => setAuthEnvStub())
 
 const mockStore = { get: vi.fn(), set: vi.fn(), delete: vi.fn() }
 const mockHeaders = { get: vi.fn<(name: string) => string | null>() }

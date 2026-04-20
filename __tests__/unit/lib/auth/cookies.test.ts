@@ -1,12 +1,7 @@
 import { describe, it, expect, beforeAll } from 'vitest'
+import { setAuthEnvStub } from '../../../helpers/authEnv'
 
-beforeAll(() => {
-  process.env.AUTH_SESSION_SECRET = '0123456789abcdef0123456789abcdef0123456789abcdef'
-  process.env.APP_URL = 'http://localhost:3000'
-  process.env.AZURE_AD_CLIENT_ID = 'x'
-  process.env.AZURE_AD_CLIENT_SECRET = 'x'
-  process.env.AZURE_AD_TENANT_ID = 'x'
-})
+beforeAll(() => setAuthEnvStub())
 
 describe('validateReturnTo', () => {
   it('accepts same-origin relative paths', async () => {

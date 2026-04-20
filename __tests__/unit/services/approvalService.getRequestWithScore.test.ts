@@ -12,6 +12,10 @@ function makeRepo(): IApprovalRepository {
     expireLocks: vi.fn(),
     getAllPriorityConfigs: vi.fn(),
     getPriorityConfig: vi.fn(),
+    getStatusCounts: vi.fn(),
+    tryLock: vi.fn(),
+    tryApprove: vi.fn(),
+    tryReject: vi.fn(),
   } as unknown as IApprovalRepository
 }
 
@@ -37,39 +41,35 @@ const baseRow = {
 describe('ApprovalService.getRequestWithScore', () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it('returns active-queue record with a priorityScore when present', async () => {
+  it('returns the request with a priorityScore from the matching category config', async () => {
     const repo = makeRepo()
-    vi.mocked(repo.findPendingAndReviewingWithAssignee).mockResolvedValue([baseRow as never])
-    vi.mocked(repo.getAllPriorityConfigs).mockResolvedValue([
-      { category: 'P2', baseWeight: 75, agingFactor: 1.5, slaHours: 48, lockTimeoutMinutes: 5 } as never,
-    ])
+    vi.mocked(repo.findById).mockResolvedValue(baseRow as never)
+    vi.mocked(repo.getPriorityConfig).mockResolvedValue({
+      category: 'P2', baseWeight: 75, agingFactor: 1.5, slaHours: 48, lockTimeoutMinutes: 5,
+    } as never)
 
     const service = new ApprovalService({ repository: repo })
     const result = await service.getRequestWithScore('req-1')
 
     expect(result.id).toBe('req-1')
     expect(result.priorityScore).toBeGreaterThan(0)
-    expect(repo.findById).not.toHaveBeenCalled()
+    expect(repo.getPriorityConfig).toHaveBeenCalledWith('P2')
   })
 
-  it('falls back to findById with default config for resolved requests', async () => {
-    const resolved = { ...baseRow, id: 'req-2', status: 'APPROVED' as const }
+  it('uses default config when no category-specific config exists', async () => {
     const repo = makeRepo()
-    vi.mocked(repo.findPendingAndReviewingWithAssignee).mockResolvedValue([])
-    vi.mocked(repo.getAllPriorityConfigs).mockResolvedValue([])
-    vi.mocked(repo.findById).mockResolvedValue(resolved as never)
+    vi.mocked(repo.findById).mockResolvedValue(baseRow as never)
+    vi.mocked(repo.getPriorityConfig).mockResolvedValue(null)
 
     const service = new ApprovalService({ repository: repo })
-    const result = await service.getRequestWithScore('req-2')
+    const result = await service.getRequestWithScore('req-1')
 
-    expect(result.id).toBe('req-2')
+    expect(result.id).toBe('req-1')
     expect(result.priorityScore).toBeGreaterThan(0)
   })
 
-  it('throws notFound when no record exists in queue or direct lookup', async () => {
+  it('throws notFound when the request does not exist', async () => {
     const repo = makeRepo()
-    vi.mocked(repo.findPendingAndReviewingWithAssignee).mockResolvedValue([])
-    vi.mocked(repo.getAllPriorityConfigs).mockResolvedValue([])
     vi.mocked(repo.findById).mockResolvedValue(null)
 
     const service = new ApprovalService({ repository: repo })

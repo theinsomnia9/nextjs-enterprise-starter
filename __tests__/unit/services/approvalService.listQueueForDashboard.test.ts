@@ -1,21 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { ApprovalService } from '@/services/approvalService'
 import type { IApprovalRepository } from '@/lib/approvals/repository'
-import { prisma } from '@/lib/prisma'
-
-vi.mock('@/lib/prisma', () => ({
-  prisma: {
-    approvalRequest: {
-      groupBy: vi.fn(),
-    },
-  },
-}))
 
 function makeRequest(overrides: Partial<{ id: string; category: 'P1' | 'P2' | 'P3' | 'P4'; submittedAt: Date; status: string }> = {}) {
-  const base = {
+  return {
     id: overrides.id ?? 'req-1',
     title: 't',
-    description: null,
     category: overrides.category ?? 'P1',
     status: overrides.status ?? 'PENDING',
     submittedAt: overrides.submittedAt ?? new Date(Date.now() - 24 * 60 * 60 * 1000),
@@ -26,11 +16,10 @@ function makeRequest(overrides: Partial<{ id: string; category: 'P1' | 'P2' | 'P
     lockExpiresAt: null,
     approvedAt: null,
     rejectedAt: null,
-    rejectionReason: null,
+    updatedAt: new Date(),
     requester: { id: 'user-1', name: 'Alice', email: 'a@example.com' },
     assignee: null,
   }
-  return base
 }
 
 function makeRepo(): IApprovalRepository {
@@ -43,20 +32,27 @@ function makeRepo(): IApprovalRepository {
     expireLocks: vi.fn(),
     getAllPriorityConfigs: vi.fn(),
     getPriorityConfig: vi.fn(),
+    getStatusCounts: vi.fn(),
+    tryLock: vi.fn(),
+    tryApprove: vi.fn(),
+    tryReject: vi.fn(),
   } as unknown as IApprovalRepository
 }
 
 describe('ApprovalService.listQueueForDashboard', () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it('returns counts by status from groupBy', async () => {
+  it('returns counts by status from repo.getStatusCounts', async () => {
     const repo = makeRepo()
     vi.mocked(repo.findPendingAndReviewingWithAssignee).mockResolvedValue([])
     vi.mocked(repo.getAllPriorityConfigs).mockResolvedValue([])
-    vi.mocked(prisma.approvalRequest.groupBy).mockResolvedValue([
-      { status: 'PENDING', _count: { id: 3 } },
-      { status: 'APPROVED', _count: { id: 5 } },
-    ] as never)
+    vi.mocked(repo.getStatusCounts).mockResolvedValue({
+      PENDING: 3,
+      REVIEWING: 0,
+      APPROVED: 5,
+      REJECTED: 0,
+      CANCELLED: 0,
+    })
 
     const service = new ApprovalService({ repository: repo })
     const result = await service.listQueueForDashboard()
@@ -74,7 +70,9 @@ describe('ApprovalService.listQueueForDashboard', () => {
       { category: 'P1', baseWeight: 100, agingFactor: 2, slaHours: 24, lockTimeoutMinutes: 5 },
       { category: 'P4', baseWeight: 25, agingFactor: 0.5, slaHours: 120, lockTimeoutMinutes: 5 },
     ] as never)
-    vi.mocked(prisma.approvalRequest.groupBy).mockResolvedValue([] as never)
+    vi.mocked(repo.getStatusCounts).mockResolvedValue({
+      PENDING: 0, REVIEWING: 0, APPROVED: 0, REJECTED: 0, CANCELLED: 0,
+    })
 
     const service = new ApprovalService({ repository: repo })
     const { requests } = await service.listQueueForDashboard()
@@ -90,7 +88,9 @@ describe('ApprovalService.listQueueForDashboard', () => {
       makeRequest({ id: 'b' }),
     ] as never)
     vi.mocked(repo.getAllPriorityConfigs).mockResolvedValue([])
-    vi.mocked(prisma.approvalRequest.groupBy).mockResolvedValue([] as never)
+    vi.mocked(repo.getStatusCounts).mockResolvedValue({
+      PENDING: 0, REVIEWING: 0, APPROVED: 0, REJECTED: 0, CANCELLED: 0,
+    })
 
     const service = new ApprovalService({ repository: repo })
     const { total } = await service.listQueueForDashboard()
