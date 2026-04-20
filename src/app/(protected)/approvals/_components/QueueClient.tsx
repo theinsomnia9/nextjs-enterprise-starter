@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useOptimistic, useState, useTransition } from 'react'
+import { useEffect, useMemo, useOptimistic, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { QueueDashboard, type QueueRequest } from '@/components/approval/QueueDashboard'
 import { RejectModal } from '@/components/approval/RejectModal'
@@ -52,6 +52,13 @@ export function QueueClient({ initialRequests, initialCounts, currentUserId }: Q
   const [rejectTarget, setRejectTarget] = useState<string | null>(null)
   const [, startTransition] = useTransition()
 
+  // Sync with server data after router.refresh() (e.g. triggered by SSE events
+  // from other users). useState(initialRequests) only reads the initial value
+  // on mount, so prop updates are otherwise lost.
+  useEffect(() => {
+    setRequests(initialRequests)
+  }, [initialRequests])
+
   const displayCounts = useMemo(
     () => ({
       PENDING: optimisticRequests.filter((r) => r.status === 'PENDING').length,
@@ -64,17 +71,27 @@ export function QueueClient({ initialRequests, initialCounts, currentUserId }: Q
 
   const handleLock = (id: string) => {
     startTransition(async () => {
-      applyOptimistic({ type: 'lock', id, reviewerId: currentUserId })
+      const patch: OptimisticPatch = { type: 'lock', id, reviewerId: currentUserId }
+      applyOptimistic(patch)
       const result = await lockAction(id)
-      if (!result.ok) toastError(result.error.message)
+      if (!result.ok) {
+        toastError(result.error.message)
+        return
+      }
+      setRequests((prev) => applyPatch(prev, patch))
     })
   }
 
   const handleRelease = (id: string) => {
     startTransition(async () => {
-      applyOptimistic({ type: 'release', id })
+      const patch: OptimisticPatch = { type: 'release', id }
+      applyOptimistic(patch)
       const result = await releaseAction(id)
-      if (!result.ok) toastError(result.error.message)
+      if (!result.ok) {
+        toastError(result.error.message)
+        return
+      }
+      setRequests((prev) => applyPatch(prev, patch))
     })
   }
 
