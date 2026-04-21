@@ -47,9 +47,7 @@ export default function UserMenu() {
             className="h-9 w-9 rounded-full border border-border bg-card/80 p-0 shadow-sm backdrop-blur hover:bg-accent"
           >
             <Avatar className="h-9 w-9">
-              {session.photoUrl ? (
-                <AvatarImage src={session.photoUrl} alt="" />
-              ) : null}
+              <AvatarImage src={session.photoUrl ?? undefined} alt="" />
               <AvatarFallback className="text-xs font-medium">
                 {initials}
               </AvatarFallback>
@@ -59,9 +57,7 @@ export default function UserMenu() {
         <DropdownMenuContent align="end" sideOffset={8} className="w-64">
           <div className="flex items-center gap-3 px-2 py-2">
             <Avatar className="h-9 w-9">
-              {session.photoUrl ? (
-                <AvatarImage src={session.photoUrl} alt="" />
-              ) : null}
+              <AvatarImage src={session.photoUrl ?? undefined} alt="" />
               <AvatarFallback className="text-xs font-medium">
                 {initials}
               </AvatarFallback>
