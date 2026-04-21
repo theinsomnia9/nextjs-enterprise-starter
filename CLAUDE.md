@@ -36,7 +36,7 @@ Copy `.env.example` → `.env` and configure:
 - `APP_URL` — Absolute app URL (e.g., `http://localhost:3000`); used to build the Entra redirect URI and validate `returnTo`
 - `AUTH_SESSION_SECRET` — ≥32-byte base64 secret; HKDF input for the JWE session key. Generate with `openssl rand -base64 32`
 - `AZURE_AD_CLIENT_ID` / `AZURE_AD_CLIENT_SECRET` / `AZURE_AD_TENANT_ID` — Entra ID app registration (single-tenant). See setup guide below
-- `OPENAI_API_KEY` — Required for chat/agent features
+- LLM provider env — see `### AI Provider` below. At minimum pick `LLM_PROVIDER` and the matching keys for that provider
 - `TAVILY_API_KEY` — Required for agent web search tool
 - `CRON_SECRET` — Protects `/api/cron/*` routes
 
