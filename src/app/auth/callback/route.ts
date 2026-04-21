@@ -158,7 +158,7 @@ export async function GET(req: NextRequest) {
       photoUrl,
     })
 
-    const returnTo = validateReturnTo(pending.returnTo) ?? '/'
+    const returnTo = validateReturnTo(pending.returnTo) ?? '/dashboard'
     const res = redirect(returnTo)
 
     // Set session cookie on the response

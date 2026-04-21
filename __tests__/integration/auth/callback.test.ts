@@ -51,7 +51,7 @@ describe('GET /auth/callback', () => {
     const res = await GET(req as never)
 
     expect(res.status).toBe(302)
-    expect(res.headers.get('location')).toBe('/')
+    expect(res.headers.get('location')).toBe('/dashboard')
     const setCookie = res.headers.get('set-cookie') ?? ''
     expect(setCookie).toContain('session=')
     expect(setCookie.toLowerCase()).toContain('httponly')
