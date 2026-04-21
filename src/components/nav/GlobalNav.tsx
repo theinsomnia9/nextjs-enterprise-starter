@@ -2,35 +2,28 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, MessageSquare, Users, Inbox } from 'lucide-react'
+import { LayoutDashboard, Settings } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const LINKS = [
-  { href: '/', label: 'Home', icon: Home, match: (p: string) => p === '/' },
   {
-    href: '/chat',
-    label: 'Chat',
-    icon: MessageSquare,
-    match: (p: string) => p === '/chat' || p.startsWith('/chat/'),
+    href: '/dashboard',
+    label: 'Dashboard',
+    icon: LayoutDashboard,
+    match: (p: string) => p === '/dashboard' || p.startsWith('/dashboard/'),
   },
   {
-    href: '/agent-teams',
-    label: 'Team Builder',
-    icon: Users,
-    match: (p: string) => p === '/agent-teams' || p.startsWith('/agent-teams/'),
-  },
-  {
-    href: '/approvals',
-    label: 'Approvals',
-    icon: Inbox,
-    match: (p: string) => p === '/approvals' || p.startsWith('/approvals/'),
+    href: '/settings',
+    label: 'Settings',
+    icon: Settings,
+    match: (p: string) => p === '/settings' || p.startsWith('/settings/'),
   },
 ] as const
 
 export default function GlobalNav() {
   const pathname = usePathname() ?? '/'
 
-  if (pathname.startsWith('/auth/')) return null
+  if (pathname.startsWith('/auth/') || pathname === '/') return null
 
   return (
     <nav
@@ -46,7 +39,7 @@ export default function GlobalNav() {
             href={href}
             aria-label={label}
             aria-current={active ? 'page' : undefined}
-            data-testid={`global-nav-${href === '/' ? 'home' : href.slice(1)}`}
+            data-testid={`global-nav-${href.slice(1)}`}
             className={cn(
               'focus-ring flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
               active
