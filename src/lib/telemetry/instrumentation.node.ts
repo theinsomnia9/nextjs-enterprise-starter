@@ -4,6 +4,9 @@ import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http'
 import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node'
 import { PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics'
 import { diag, DiagConsoleLogger, DiagLogLevel } from '@opentelemetry/api'
+import { logs } from '@opentelemetry/api-logs'
+import { LoggerProvider, BatchLogRecordProcessor } from '@opentelemetry/sdk-logs'
+import { OTLPLogExporter } from '@opentelemetry/exporter-logs-otlp-http'
 import { buildResource } from './resource'
 
 if (process.env.OTEL_LOG_LEVEL) {
@@ -51,10 +54,22 @@ const sdk = new NodeSDK({
 
 sdk.start()
 
+const logExporter = new OTLPLogExporter({
+  url: process.env.OTEL_EXPORTER_OTLP_ENDPOINT
+    ? `${process.env.OTEL_EXPORTER_OTLP_ENDPOINT}/v1/logs`
+    : 'http://localhost:4318/v1/logs',
+})
+
+const loggerProvider = new LoggerProvider({
+  resource: buildResource(),
+  processors: [new BatchLogRecordProcessor(logExporter)],
+})
+
+logs.setGlobalLoggerProvider(loggerProvider)
+
 process.on('SIGTERM', () => {
-  sdk
-    .shutdown()
-    .then(() => console.log('OpenTelemetry SDK shut down successfully'))
-    .catch((error) => console.error('Error shutting down OpenTelemetry SDK', error))
+  Promise.allSettled([sdk.shutdown(), loggerProvider.shutdown()])
+    .then(() => console.log('OpenTelemetry SDK + LoggerProvider shut down successfully'))
+    .catch((error) => console.error('Error shutting down OpenTelemetry', error))
     .finally(() => process.exit(0))
 })
