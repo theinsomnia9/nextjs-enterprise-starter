@@ -1,4 +1,4 @@
-import { ChatOpenAI } from '@langchain/openai'
+import { getChatModel } from '@/lib/ai'
 import { SystemMessage, HumanMessage, AIMessage } from '@langchain/core/messages'
 import { z } from 'zod'
 import type { GraphDiff, TeamDefinition } from './types'
@@ -141,7 +141,6 @@ function buildSystemPrompt(current: TeamDefinition): string {
 }
 
 export interface DesignerDeps {
-  apiKey?: string
   model?: string
 }
 
@@ -153,15 +152,9 @@ export async function runDesigner(
   },
   deps: DesignerDeps = {}
 ): Promise<{ diff: GraphDiff; reply: string }> {
-  const apiKey = deps.apiKey ?? process.env.OPENAI_API_KEY
-  if (!apiKey) {
-    throw new Error('OPENAI_API_KEY is not configured')
-  }
-
-  const llm = new ChatOpenAI({
-    model: deps.model ?? 'gpt-4o-mini',
+  const llm = getChatModel({
+    model: deps.model,
     temperature: 0,
-    apiKey,
   }).withStructuredOutput(diffSchema, { name: 'propose_graph_diff' })
 
   const messages = [
