@@ -69,6 +69,23 @@ The `/settings/admin` page is the reference example — it calls
 Full setup: **[docs/entra-id-local-setup.md](./docs/entra-id-local-setup.md)** (local)
 · **[docs/azure-production-setup.md](./docs/azure-production-setup.md)** (production runbook).
 
+## API route examples
+
+Two reference JSON routes show the full pattern — authN / authZ, telemetry,
+and typed error responses:
+
+| Route | Purpose | Demonstrates |
+|---|---|---|
+| `GET /api/me` | Returns the signed-in user's profile | `getSessionForClient()` · `createSpan('api.me.get')` · `handleApiError` |
+| `GET /api/admin/users` | Lists users (Admin only) | `requireRole(Role.Admin)` · Prisma · `createSpan('api.admin.users.list')` |
+
+Unauthenticated calls to `/api/*` get `401 {"code":"UNAUTHORIZED"}` from
+`src/proxy.ts` (JSON, not a redirect). Non-admin callers to
+`/api/admin/users` get `403 {"code":"FORBIDDEN"}` from `requireRole`. Any
+thrown `AppError` is translated by `handleApiError`. Each handler is
+wrapped in `createSpan(...)` so exceptions are recorded on the span and
+flow to the OTLP collector.
+
 ## Commands
 
 ```bash
