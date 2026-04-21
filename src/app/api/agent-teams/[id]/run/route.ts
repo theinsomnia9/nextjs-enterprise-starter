@@ -39,6 +39,7 @@ export const POST = withApi<{ id: string }>('agentTeams.run', async (req, { para
     let runStatus: 'completed' | 'failed' | 'client_disconnect' = 'completed'
     let runResult: 'ok' | 'error' | 'client_disconnect' = 'ok'
     let sawError = false
+    let completedNormally = false
 
     span.setAttribute('team.id', team.id)
     span.setAttribute('user.id', actor.id)
@@ -71,20 +72,27 @@ export const POST = withApi<{ id: string }>('agentTeams.run', async (req, { para
             if (ev.type === 'error') {
               sawError = true
             }
-            if (ev.type === 'final' || ev.type === 'error') break
+            if (ev.type === 'final' || ev.type === 'error') {
+              completedNormally = true
+              break
+            }
           }
         } catch (err) {
           sawError = true
           const message = err instanceof Error ? err.message : 'Execution failed'
           send({ type: 'error', message })
-          logger.error('agent_team.run failed', err as Error, { teamId: team.id })
+          logger.error(
+            'agent_team.run failed',
+            err instanceof Error ? err : new Error(String(err)),
+            { teamId: team.id }
+          )
         } finally {
-          if (req.signal.aborted) {
-            runStatus = 'client_disconnect'
-            runResult = 'client_disconnect'
-          } else if (sawError) {
+          if (sawError) {
             runStatus = 'failed'
             runResult = 'error'
+          } else if (!completedNormally && req.signal.aborted) {
+            runStatus = 'client_disconnect'
+            runResult = 'client_disconnect'
           }
           const durationMs = performance.now() - startedAt
           span.setAttribute('run.status', runStatus)

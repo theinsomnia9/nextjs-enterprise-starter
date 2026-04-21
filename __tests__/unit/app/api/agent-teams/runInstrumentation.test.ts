@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 const { mockCounterAdd, mockHistogramRecord, mockSetAttribute, mockLoggerInfo, mockLoggerError, mockCreateSpan } = vi.hoisted(() => {
   const mockCounterAdd = vi.fn()
@@ -41,13 +41,18 @@ vi.mock('@/services/agentTeamService', () => ({
   },
 }))
 
-vi.mock('@/lib/agentTeams/executor', () => ({
-  executeTeam: vi.fn(async function* () {
+const { mockExecuteTeam } = vi.hoisted(() => {
+  const mockExecuteTeam = vi.fn(async function* (_args?: { signal?: AbortSignal }) {
     yield { type: 'run_started', teamId: 'team-1' }
     yield { type: 'node_started', nodeId: 'a', label: 'A', kind: 'agent' }
     yield { type: 'node_completed', nodeId: 'a', outputPreview: 'ok' }
     yield { type: 'final', output: 'done' }
-  }),
+  })
+  return { mockExecuteTeam }
+})
+
+vi.mock('@/lib/agentTeams/executor', () => ({
+  executeTeam: (...args: Parameters<typeof mockExecuteTeam>) => mockExecuteTeam(...args),
 }))
 
 vi.mock('@/lib/api/withApi', () => ({
@@ -57,6 +62,17 @@ vi.mock('@/lib/api/withApi', () => ({
 describe('POST /api/agent-teams/[id]/run instrumentation', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    // Restore the default happy-path executor before each test
+    mockExecuteTeam.mockImplementation(async function* (_args?: { signal?: AbortSignal }) {
+      yield { type: 'run_started', teamId: 'team-1' }
+      yield { type: 'node_started', nodeId: 'a', label: 'A', kind: 'agent' }
+      yield { type: 'node_completed', nodeId: 'a', outputPreview: 'ok' }
+      yield { type: 'final', output: 'done' }
+    })
+  })
+
+  afterEach(() => {
+    vi.resetModules()
   })
 
   it('emits a team.run span, increments run.events.total per event, and records duration on success', async () => {
@@ -92,5 +108,73 @@ describe('POST /api/agent-teams/[id]/run instrumentation', () => {
     expect(mockHistogramRecord).toHaveBeenCalled()
     expect(mockLoggerInfo).toHaveBeenCalledWith('agent_team.run.start', expect.any(Object))
     expect(mockLoggerInfo).toHaveBeenCalledWith('agent_team.run.end', expect.any(Object))
+  })
+
+  it('Test A — executor throws → result=error wins over any abort state', async () => {
+    const thrownError = new Error('executor boom')
+    mockExecuteTeam.mockImplementation(async function* () {
+      yield { type: 'run_started', teamId: 'team-1' }
+      throw thrownError
+    })
+
+    const { POST } = await import('@/app/api/agent-teams/[id]/run/route')
+    const req = new Request('http://localhost/api/agent-teams/team-1/run', {
+      method: 'POST',
+      body: JSON.stringify({ input: 'hi' }),
+      headers: { 'content-type': 'application/json' },
+    })
+    const res = await (POST as (r: Request, ctx: unknown) => Promise<Response>)(req, {
+      params: Promise.resolve({ id: 'team-1' }),
+    })
+    const reader = res.body!.getReader()
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const { done } = await reader.read()
+      if (done) break
+    }
+
+    expect(mockCounterAdd).toHaveBeenCalledWith('total', 1, expect.objectContaining({ result: 'error' }))
+    expect(mockSetAttribute).toHaveBeenCalledWith('run.status', 'failed')
+    expect(mockLoggerError).toHaveBeenCalledWith('agent_team.run failed', thrownError, expect.any(Object))
+  })
+
+  it('Test B — client abort before stream ends → result=client_disconnect', async () => {
+    const controller = new AbortController()
+
+    mockExecuteTeam.mockImplementation(async function* (args?: { signal?: AbortSignal }) {
+      yield { type: 'run_started', teamId: 'team-1' }
+      // Hang until aborted
+      await new Promise<void>((resolve) => {
+        if (!args?.signal || args.signal.aborted) return resolve()
+        args.signal.addEventListener('abort', () => resolve(), { once: true })
+      })
+    })
+
+    const { POST } = await import('@/app/api/agent-teams/[id]/run/route')
+    const req = new Request('http://localhost/api/agent-teams/team-1/run', {
+      method: 'POST',
+      body: JSON.stringify({ input: 'hi' }),
+      headers: { 'content-type': 'application/json' },
+      signal: controller.signal,
+    })
+
+    const resPromise = (POST as (r: Request, ctx: unknown) => Promise<Response>)(req, {
+      params: Promise.resolve({ id: 'team-1' }),
+    })
+
+    // Abort after the response has started streaming
+    await new Promise((r) => setTimeout(r, 10))
+    controller.abort()
+
+    const res = await resPromise
+    const reader = res.body!.getReader()
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const { done } = await reader.read()
+      if (done) break
+    }
+
+    expect(mockCounterAdd).toHaveBeenCalledWith('total', 1, expect.objectContaining({ result: 'client_disconnect' }))
+    expect(mockSetAttribute).toHaveBeenCalledWith('run.status', 'client_disconnect')
   })
 })
