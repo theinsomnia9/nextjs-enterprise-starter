@@ -1,7 +1,5 @@
 export enum ErrorCode {
   NOT_FOUND = 'NOT_FOUND',
-  ALREADY_RESOLVED = 'ALREADY_RESOLVED',
-  LOCKED_BY_OTHER = 'LOCKED_BY_OTHER',
   VALIDATION_ERROR = 'VALIDATION_ERROR',
   UNAUTHORIZED = 'UNAUTHORIZED',
   FORBIDDEN = 'FORBIDDEN',
@@ -44,28 +42,6 @@ export const notFound = (resource: string, id?: string) =>
     code: ErrorCode.NOT_FOUND,
     message: `${resource} not found`,
     ...(id && { details: { id } }),
-  })
-
-export const alreadyResolved = () =>
-  new AppError({
-    statusCode: 409,
-    code: ErrorCode.ALREADY_RESOLVED,
-    message: 'Request is already resolved',
-  })
-
-export const lockedByOther = (lockedBy?: string) =>
-  new AppError({
-    statusCode: 403,
-    code: ErrorCode.LOCKED_BY_OTHER,
-    message: 'Request is locked by another reviewer',
-    ...(lockedBy && { details: { lockedBy } }),
-  })
-
-export const notCurrentReviewer = () =>
-  new AppError({
-    statusCode: 403,
-    code: ErrorCode.FORBIDDEN,
-    message: 'You are not the current reviewer',
   })
 
 export const validationError = (message: string, details?: Record<string, unknown>) =>
