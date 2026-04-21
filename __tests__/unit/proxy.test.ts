@@ -34,29 +34,35 @@ async function freshCookie() {
 describe('proxy', () => {
   it('redirects unauthenticated requests to /auth/signin with returnTo', async () => {
     const { proxy } = await import('@/proxy')
-    const res = await proxy(mkRequest('/approvals'))
+    const res = await proxy(mkRequest('/dashboard'))
     expect(res.status).toBe(307)
     expect(res.headers.get('location')).toContain('/auth/signin')
-    expect(res.headers.get('location')).toContain('returnTo=%2Fapprovals')
+    expect(res.headers.get('location')).toContain('returnTo=%2Fdashboard')
+  })
+
+  it('allows / (public landing) without a session', async () => {
+    const { proxy } = await import('@/proxy')
+    const res = await proxy(mkRequest('/'))
+    expect(res.status).toBe(200)
   })
 
   it('allows /auth/* without a session', async () => {
     const { proxy } = await import('@/proxy')
     const res = await proxy(mkRequest('/auth/signin'))
-    expect(res.status).toBe(200) // NextResponse.next() yields 200
+    expect(res.status).toBe(200)
   })
 
   it('allows authenticated requests to pass through', async () => {
     const cookie = `session=${encodeURIComponent(await freshCookie())}`
     const { proxy } = await import('@/proxy')
-    const res = await proxy(mkRequest('/approvals', cookie))
+    const res = await proxy(mkRequest('/dashboard', cookie))
     expect(res.status).toBe(200)
   })
 
   it('redirects when session cookie is tampered', async () => {
     const cookie = `session=not-a-valid-jwe`
     const { proxy } = await import('@/proxy')
-    const res = await proxy(mkRequest('/approvals', cookie))
+    const res = await proxy(mkRequest('/dashboard', cookie))
     expect(res.status).toBe(307)
     expect(res.headers.get('location')).toContain('/auth/signin')
   })
@@ -74,7 +80,7 @@ describe('proxy', () => {
   it('forwards the verified session payload via x-auth-session on authenticated requests', async () => {
     const cookie = `session=${encodeURIComponent(await freshCookie())}`
     const { proxy } = await import('@/proxy')
-    const res = await proxy(mkRequest('/approvals', cookie))
+    const res = await proxy(mkRequest('/dashboard', cookie))
     expect(res.status).toBe(200)
     const forwarded = res.headers.get('x-middleware-request-x-auth-session') ?? ''
     expect(forwarded).toBeTruthy()

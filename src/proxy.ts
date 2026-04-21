@@ -10,7 +10,8 @@ export const config = {
 }
 
 function isPublicPath(pathname: string): boolean {
-  return pathname === '/auth/signin' ||
+  return pathname === '/' ||
+    pathname === '/auth/signin' ||
     pathname === '/auth/callback' ||
     pathname === '/auth/signout' ||
     pathname.startsWith('/auth/unauthorized') ||
