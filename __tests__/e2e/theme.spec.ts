@@ -1,56 +1,83 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, type BrowserContext } from '@playwright/test'
+import { buildSessionCookie } from '../helpers/mockSession'
+
+const BASE = 'http://localhost:3000'
+
+async function addAuthCookie(context: BrowserContext) {
+  const cookie = await buildSessionCookie({
+    userId: 'dev-user-alice',
+    roles: ['Approver'],
+    name: 'Alice',
+    email: 'alice@example.com',
+  })
+  await context.addCookies([
+    {
+      name: 'session',
+      value: encodeURIComponent(cookie),
+      domain: 'localhost',
+      path: '/',
+      httpOnly: true,
+      secure: false,
+      sameSite: 'Lax',
+    },
+  ])
+}
+
+async function openThemeItem(page: import('@playwright/test').Page) {
+  await page.locator('button[aria-label="Open user menu"]').click()
+  return page.locator('[data-testid="user-menu-theme"]')
+}
 
 test.describe('Theme Toggle', () => {
-  test('should have theme toggle button visible', async ({ page }) => {
-    await page.goto('/')
-
-    const themeToggle = page.getByRole('button', { name: /toggle theme/i })
-    await expect(themeToggle).toBeVisible()
+  test('should have theme toggle item visible in UserMenu', async ({ context, page }) => {
+    await addAuthCookie(context)
+    await page.goto(`${BASE}/`)
+    const themeItem = await openThemeItem(page)
+    await expect(themeItem).toBeVisible()
   })
 
-  test('should toggle between light and dark mode', async ({ page }) => {
-    await page.goto('/')
+  test('should toggle between light and dark mode', async ({ context, page }) => {
+    await addAuthCookie(context)
+    await page.goto(`${BASE}/`)
 
     const html = page.locator('html')
-    const themeToggle = page.getByRole('button', { name: /toggle theme/i })
-
     await expect(html).not.toHaveClass(/dark/)
 
-    await themeToggle.click()
-
+    let themeItem = await openThemeItem(page)
+    await themeItem.click()
     await expect(html).toHaveClass(/dark/)
 
-    await themeToggle.click()
-
+    // Re-open menu after click (menu closed because onSelect without preventDefault for a normal click)
+    themeItem = await openThemeItem(page)
+    await themeItem.click()
     await expect(html).not.toHaveClass(/dark/)
   })
 
-  test('should persist theme preference across page reloads', async ({ page }) => {
-    await page.goto('/')
+  test('should persist theme preference across page reloads', async ({ context, page }) => {
+    await addAuthCookie(context)
+    await page.goto(`${BASE}/`)
 
     const html = page.locator('html')
-    const themeToggle = page.getByRole('button', { name: /toggle theme/i })
-
-    await themeToggle.click()
+    const themeItem = await openThemeItem(page)
+    await themeItem.click()
     await expect(html).toHaveClass(/dark/)
 
     await page.reload()
-
     await expect(html).toHaveClass(/dark/)
   })
 
-  test('should work on all pages', async ({ page }) => {
-    await page.goto('/')
+  test('should work on /builder page', async ({ context, page }) => {
+    await addAuthCookie(context)
+    await page.goto(`${BASE}/`)
 
-    const themeToggle = page.getByRole('button', { name: /toggle theme/i })
-    await themeToggle.click()
+    // Enable dark mode from /
+    const themeItem = await openThemeItem(page)
+    await themeItem.click()
 
-    await page.goto('/builder')
-
+    // Navigate to /builder and verify dark mode persisted + UserMenu present
+    await page.goto(`${BASE}/builder`)
     const html = page.locator('html')
     await expect(html).toHaveClass(/dark/)
-
-    const builderToggle = page.getByRole('button', { name: /toggle theme/i })
-    await expect(builderToggle).toBeVisible()
+    await expect(page.locator('button[aria-label="Open user menu"]')).toBeVisible()
   })
 })
