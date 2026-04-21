@@ -14,6 +14,7 @@ vi.mock('@/lib/auth/msal', () => ({
 describe('GET /auth/signin', () => {
   beforeEach(() => {
     mockStore.set.mockReset()
+    mockStore.get.mockReset()
     getAuthCodeUrl.mockReset()
     getAuthCodeUrl.mockResolvedValue('https://login.microsoftonline.com/tenant/authorize?x=1')
   })
@@ -47,5 +48,31 @@ describe('GET /auth/signin', () => {
     const [, body] = mockStore.set.mock.calls[0]
     const decoded = JSON.parse(Buffer.from(body as string, 'base64').toString('utf8'))
     expect(decoded.returnTo).toBeNull()
+  })
+
+  it('forces prompt=login and clears the flag when post_logout cookie is set', async () => {
+    mockStore.get.mockImplementation((name: string) =>
+      name === 'post_logout' ? { value: '1' } : undefined
+    )
+    const { GET } = await import('@/app/auth/signin/route')
+    const req = new Request('http://localhost:3000/auth/signin')
+    await GET(req as never)
+    expect(getAuthCodeUrl).toHaveBeenCalledWith(
+      expect.objectContaining({ prompt: 'login' })
+    )
+    expect(mockStore.set).toHaveBeenCalledWith(
+      'post_logout',
+      '',
+      expect.objectContaining({ path: '/auth/signin', maxAge: 0 })
+    )
+  })
+
+  it('does not set prompt when post_logout cookie is absent', async () => {
+    mockStore.get.mockReturnValue(undefined)
+    const { GET } = await import('@/app/auth/signin/route')
+    const req = new Request('http://localhost:3000/auth/signin')
+    await GET(req as never)
+    const opts = getAuthCodeUrl.mock.calls[0][0]
+    expect(opts.prompt).toBeUndefined()
   })
 })

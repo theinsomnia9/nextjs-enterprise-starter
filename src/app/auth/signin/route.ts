@@ -4,9 +4,11 @@ import { cookies } from 'next/headers'
 import { getMsalClient } from '@/lib/auth/msal'
 import { authConfig } from '@/lib/auth/config'
 import {
+  clearPostLogoutCookieOptions,
   oauthPendingCookieOptions,
   validateReturnTo,
   OAUTH_PENDING_COOKIE,
+  POST_LOGOUT_COOKIE,
 } from '@/lib/auth/cookies'
 
 export const runtime = 'nodejs'
@@ -26,6 +28,9 @@ export async function GET(req: NextRequest) {
   const url = new URL(req.url)
   const returnTo = validateReturnTo(url.searchParams.get('returnTo') ?? undefined)
 
+  const store = await cookies()
+  const postLogout = store.get(POST_LOGOUT_COOKIE)?.value === '1'
+
   const state = b64url(randomBytes(16))
   const { verifier, challenge } = generatePkce()
 
@@ -36,6 +41,7 @@ export async function GET(req: NextRequest) {
     state,
     codeChallenge: challenge,
     codeChallengeMethod: 'S256',
+    ...(postLogout ? { prompt: 'login' } : {}),
   })
 
   const pending = Buffer.from(
@@ -43,8 +49,10 @@ export async function GET(req: NextRequest) {
     'utf8'
   ).toString('base64')
 
-  const store = await cookies()
   store.set(OAUTH_PENDING_COOKIE, pending, oauthPendingCookieOptions())
+  if (postLogout) {
+    store.set(POST_LOGOUT_COOKIE, '', clearPostLogoutCookieOptions())
+  }
 
   return NextResponse.redirect(authUrl, { status: 302 })
 }

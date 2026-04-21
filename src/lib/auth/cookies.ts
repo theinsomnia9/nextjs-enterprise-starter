@@ -49,3 +49,23 @@ export function validateReturnTo(value: unknown): string | null {
 
 export const OAUTH_PENDING_COOKIE = authConfig.oauthPendingCookieName
 export const SESSION_COOKIE = authConfig.sessionCookieName
+
+// Short-lived flag set by /auth/signout so the next /auth/signin forces
+// Entra to re-prompt for credentials (prompt=login). Without it, Entra's
+// SSO cookie would silently re-issue a code and the user would appear
+// to "bounce back" signed in after clicking Sign out.
+export const POST_LOGOUT_COOKIE = 'post_logout'
+
+export function postLogoutCookieOptions(): CookieOptions {
+  return {
+    httpOnly: true,
+    secure: isHttps,
+    sameSite: 'lax',
+    path: '/auth/signin',
+    maxAge: 300,
+  }
+}
+
+export function clearPostLogoutCookieOptions(): CookieOptions {
+  return { ...postLogoutCookieOptions(), maxAge: 0 }
+}
