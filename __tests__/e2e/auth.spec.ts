@@ -21,7 +21,7 @@ test.describe('auth', () => {
   test('authenticated user sees approvals page', async ({ context, page }) => {
     const cookie = await buildSessionCookie({
       userId: 'dev-user-alice',
-      roles: ['Approver'],
+      roles: ['User'],
       name: 'Alice',
     })
     await context.addCookies([
@@ -42,7 +42,7 @@ test.describe('auth', () => {
   test('sign-out clears session and redirects to signin', async ({ context, page }) => {
     const cookie = await buildSessionCookie({
       userId: 'dev-user-alice',
-      roles: ['Approver'],
+      roles: ['User'],
     })
     await context.addCookies([
       {

@@ -12,12 +12,12 @@ describe('forbidden()', () => {
   it('includes the required role(s) in the message', () => {
     const single = forbidden(['Admin'])
     expect(single.message).toBe('Requires role: Admin')
-    const multi = forbidden(['Approver', 'Admin'])
-    expect(multi.message).toBe('Requires role: Approver or Admin')
+    const multi = forbidden(['User', 'Admin'])
+    expect(multi.message).toBe('Requires role: User or Admin')
   })
 
   it('attaches requiredRoles in details', () => {
-    const err = forbidden(['Approver', 'Admin'])
-    expect(err.details).toEqual({ requiredRoles: ['Approver', 'Admin'] })
+    const err = forbidden(['User', 'Admin'])
+    expect(err.details).toEqual({ requiredRoles: ['User', 'Admin'] })
   })
 })

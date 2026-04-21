@@ -6,7 +6,7 @@ const BASE = 'http://localhost:3000'
 async function addAuthCookie(context: BrowserContext) {
   const cookie = await buildSessionCookie({
     userId: 'dev-user-alice',
-    roles: ['Approver'],
+    roles: ['User'],
     name: 'Alice',
     email: 'alice@example.com',
   })

@@ -1,21 +1,18 @@
 export const Role = {
   Admin: 'Admin',
-  Approver: 'Approver',
-  Requester: 'Requester',
+  User: 'User',
 } as const
 
 export type Role = (typeof Role)[keyof typeof Role]
 
-export const APPROVER_ROLES: readonly Role[] = [Role.Approver, Role.Admin]
-
-const KNOWN_ROLES: readonly Role[] = [Role.Admin, Role.Approver, Role.Requester]
+const KNOWN_ROLES: readonly Role[] = [Role.Admin, Role.User]
 
 export function parseRolesClaim(claim: unknown): Role[] {
   if (!Array.isArray(claim)) {
     if (claim !== undefined && claim !== null) {
-      console.warn('[auth/roles] roles claim is not an array; defaulting to Requester', { claim })
+      console.warn('[auth/roles] roles claim is not an array; defaulting to User', { claim })
     }
-    return [Role.Requester]
+    return [Role.User]
   }
 
   const known: Role[] = []
@@ -32,5 +29,5 @@ export function parseRolesClaim(claim: unknown): Role[] {
     console.warn('[auth/roles] filtered unknown role(s) from claim', { unknown })
   }
 
-  return known.length === 0 ? [Role.Requester] : known
+  return known.length === 0 ? [Role.User] : known
 }

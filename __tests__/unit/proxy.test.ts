@@ -24,7 +24,7 @@ async function freshCookie() {
   return encodeSession({
     userId: 'u_1',
     entraOid: 'oid_1',
-    roles: ['Approver'],
+    roles: ['User'],
     name: null,
     email: null,
     photoUrl: null,
@@ -80,6 +80,6 @@ describe('proxy', () => {
     expect(forwarded).toBeTruthy()
     const parsed = JSON.parse(forwarded)
     expect(parsed.userId).toBe('u_1')
-    expect(parsed.roles).toEqual(['Approver'])
+    expect(parsed.roles).toEqual(['User'])
   })
 })

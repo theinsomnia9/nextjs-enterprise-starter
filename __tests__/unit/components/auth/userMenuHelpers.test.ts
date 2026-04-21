@@ -37,11 +37,7 @@ describe('roleBadgeClasses', () => {
     expect(roleBadgeClasses('Admin')).toMatch(/bg-primary/)
   })
 
-  it('returns secondary classes for Approver', () => {
-    expect(roleBadgeClasses('Approver')).toMatch(/bg-secondary/)
-  })
-
-  it('returns muted classes for Requester', () => {
-    expect(roleBadgeClasses('Requester')).toMatch(/bg-muted/)
+  it('returns muted classes for User', () => {
+    expect(roleBadgeClasses('User')).toMatch(/bg-muted/)
   })
 })

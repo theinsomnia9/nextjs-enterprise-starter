@@ -19,7 +19,7 @@ describe('requireRole', () => {
   })
 
   it('throws FORBIDDEN when the actor lacks the required role', async () => {
-    vi.mocked(getActor).mockResolvedValue({ id: 'u_1', roles: [Role.Requester] })
+    vi.mocked(getActor).mockResolvedValue({ id: 'u_1', roles: [Role.User] })
     await expect(requireRole(Role.Admin)).rejects.toMatchObject({ code: 'FORBIDDEN' })
   })
 
@@ -40,16 +40,16 @@ describe('requireAnyRole', () => {
   beforeEach(() => vi.mocked(getActor).mockReset())
 
   it('passes if actor has any of the given roles', async () => {
-    vi.mocked(getActor).mockResolvedValue({ id: 'u_1', roles: [Role.Approver] })
-    const actor = await requireAnyRole([Role.Approver, Role.Admin])
+    vi.mocked(getActor).mockResolvedValue({ id: 'u_1', roles: [Role.User] })
+    const actor = await requireAnyRole([Role.User, Role.Admin])
     expect(actor.id).toBe('u_1')
   })
 
   it('throws FORBIDDEN if actor holds none of the given roles', async () => {
-    vi.mocked(getActor).mockResolvedValue({ id: 'u_1', roles: [Role.Requester] })
-    await expect(requireAnyRole([Role.Approver, Role.Admin])).rejects.toMatchObject({
+    vi.mocked(getActor).mockResolvedValue({ id: 'u_1', roles: [] as Role[] })
+    await expect(requireAnyRole([Role.Admin])).rejects.toMatchObject({
       code: 'FORBIDDEN',
-      message: expect.stringContaining('Approver or Admin'),
+      message: expect.stringContaining('Admin'),
     })
   })
 })

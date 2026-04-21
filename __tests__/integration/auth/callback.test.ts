@@ -34,13 +34,13 @@ describe('GET /auth/callback', () => {
     const msal = await import('@/lib/auth/msal')
     // @ts-expect-error __mocks is our backdoor
     msal.__mocks.acquireTokenByCode.mockResolvedValue({
-      idToken: buildIdToken({ oid: 'test-oid-1', name: 'Alice', preferred_username: 'a@test.local', roles: ['Approver'] }),
+      idToken: buildIdToken({ oid: 'test-oid-1', name: 'Alice', preferred_username: 'a@test.local', roles: ['User'] }),
       accessToken: 'fake-access-token',
       idTokenClaims: {
         oid: 'test-oid-1',
         name: 'Alice',
         preferred_username: 'a@test.local',
-        roles: ['Approver'],
+        roles: ['User'],
       },
     })
 
@@ -73,7 +73,7 @@ describe('GET /auth/callback', () => {
     expect(user).toBeNull()
   })
 
-  it('no role claim → session contains [Requester]', async () => {
+  it('no role claim → session contains [User]', async () => {
     const msal = await import('@/lib/auth/msal')
     // @ts-expect-error __mocks
     msal.__mocks.acquireTokenByCode.mockResolvedValue({
@@ -94,6 +94,6 @@ describe('GET /auth/callback', () => {
     const sessionCookie = (res.headers.get('set-cookie') ?? '').match(/session=([^;]+)/)?.[1] ?? ''
     const { decodeSession } = await import('@/lib/auth/session')
     const payload = await decodeSession(decodeURIComponent(sessionCookie))
-    expect(payload.roles).toEqual(['Requester'])
+    expect(payload.roles).toEqual(['User'])
   })
 })

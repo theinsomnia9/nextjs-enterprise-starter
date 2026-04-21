@@ -57,7 +57,7 @@ describe('UserMenu', () => {
   it('renders the trigger with initials fallback', () => {
     renderWith({
       userId: 'u1',
-      roles: ['Approver'],
+      roles: ['User'],
       name: 'Alice Example',
       email: 'alice@example.com',
       photoUrl: null,
@@ -93,7 +93,7 @@ describe('UserMenu', () => {
     document.documentElement.classList.remove('dark')
     renderWith({
       userId: 'u1',
-      roles: ['Requester'],
+      roles: ['User'],
       name: 'Bob',
       email: null,
       photoUrl: null,
@@ -113,7 +113,7 @@ describe('UserMenu', () => {
     const user = userEvent.setup()
     renderWith({
       userId: 'u1',
-      roles: ['Requester', 'Admin'],
+      roles: ['User', 'Admin'],
       name: 'Alice',
       email: null,
       photoUrl: null,
@@ -127,7 +127,7 @@ describe('UserMenu', () => {
     const photoUrl = 'https://example.com/photo.jpg'
     const { container } = renderWith({
       userId: 'u1',
-      roles: ['Requester'],
+      roles: ['User'],
       name: 'Carol Test',
       email: 'carol@example.com',
       photoUrl,
@@ -147,7 +147,7 @@ describe('UserMenu', () => {
   it('renders "?" when name and email are both null', () => {
     renderWith({
       userId: 'u1',
-      roles: ['Requester'],
+      roles: ['User'],
       name: null,
       email: null,
       photoUrl: null,
@@ -172,32 +172,17 @@ describe('UserMenu', () => {
     expect(badge.classList.contains('text-primary-foreground')).toBe(true)
   })
 
-  it('renders correct badge classes for Approver role', async () => {
+  it('renders correct badge classes for User role', async () => {
     const user = userEvent.setup()
     renderWith({
       userId: 'u1',
-      roles: ['Approver'],
-      name: 'April Approver',
-      email: 'april@example.com',
+      roles: ['User'],
+      name: 'Ulrich User',
+      email: 'ulrich@example.com',
       photoUrl: null,
     })
     await user.click(screen.getByRole('button', { name: /open user menu/i }))
-    const badge = screen.getByLabelText('Role: Approver')
-    expect(badge.classList.contains('bg-secondary')).toBe(true)
-    expect(badge.classList.contains('text-secondary-foreground')).toBe(true)
-  })
-
-  it('renders correct badge classes for Requester role', async () => {
-    const user = userEvent.setup()
-    renderWith({
-      userId: 'u1',
-      roles: ['Requester'],
-      name: 'Rex Requester',
-      email: 'rex@example.com',
-      photoUrl: null,
-    })
-    await user.click(screen.getByRole('button', { name: /open user menu/i }))
-    const badge = screen.getByLabelText('Role: Requester')
+    const badge = screen.getByLabelText('Role: User')
     expect(badge.classList.contains('bg-muted')).toBe(true)
     expect(badge.classList.contains('text-muted-foreground')).toBe(true)
   })
@@ -206,7 +191,7 @@ describe('UserMenu', () => {
     const user = userEvent.setup()
     renderWith({
       userId: 'u1',
-      roles: ['Approver'],
+      roles: ['User'],
       name: 'Alice Example',
       email: 'alice@example.com',
       photoUrl: null,

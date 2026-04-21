@@ -7,7 +7,7 @@ vi.mock('@/lib/auth/actor', () => ({
   getSessionForClient: vi.fn(),
 }))
 
-export async function setActor(id: string, roles: Role[] = ['Approver' as Role]) {
+export async function setActor(id: string, roles: Role[] = ['User' as Role]) {
   const mod = await import('@/lib/auth/actor')
   vi.mocked(mod.getActor).mockResolvedValue({ id, roles })
   vi.mocked(mod.getActorId).mockResolvedValue(id)

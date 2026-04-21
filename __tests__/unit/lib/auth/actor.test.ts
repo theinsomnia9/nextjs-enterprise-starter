@@ -17,7 +17,7 @@ async function encodeFresh(overrides: Record<string, unknown> = {}) {
   return encodeSession({
     userId: 'u_1',
     entraOid: 'oid_1',
-    roles: ['Approver'],
+    roles: ['User'],
     name: 'Alice',
     email: 'a@x.com',
     photoUrl: null,
@@ -39,7 +39,7 @@ describe('getActor', () => {
     mockStore.get.mockReturnValue({ value: cookie })
     const { getActor } = await import('@/lib/auth/actor')
     const actor = await getActor()
-    expect(actor).toEqual({ id: 'u_1', roles: ['Approver'] })
+    expect(actor).toEqual({ id: 'u_1', roles: ['User'] })
   })
 
   it('throws UNAUTHORIZED when no session cookie', async () => {
@@ -70,7 +70,7 @@ describe('getActor', () => {
       {
         userId: 'u_1',
         entraOid: 'oid_1',
-        roles: ['Approver'],
+        roles: ['User'],
         name: 'Alice',
         email: 'a@x.com',
         photoUrl: null,
@@ -87,7 +87,7 @@ describe('getActor', () => {
     const { encodeSession } = await import('@/lib/auth/session')
     const now = Math.floor(Date.now() / 1000)
     const cookie = await encodeSession(
-      { userId: 'u_1', entraOid: 'oid_1', roles: ['Approver'], name: null, email: null, photoUrl: null },
+      { userId: 'u_1', entraOid: 'oid_1', roles: ['User'], name: null, email: null, photoUrl: null },
       { now: now - 7 * 60 * 60 }
     )
     mockStore.get.mockReturnValue({ value: cookie })
@@ -144,13 +144,13 @@ describe('readSession middleware-forwarded header', () => {
   })
 
   it('falls back to cookie decrypt when the forwarded header is malformed', async () => {
-    const cookie = await encodeFresh({ userId: 'u_fb', roles: ['Approver'] })
+    const cookie = await encodeFresh({ userId: 'u_fb', roles: ['User'] })
     mockHeaders.get.mockImplementation((n: string) =>
       n === 'x-auth-session' ? 'not-json' : null
     )
     mockStore.get.mockReturnValue({ value: cookie })
     const { getActor } = await import('@/lib/auth/actor')
-    await expect(getActor()).resolves.toEqual({ id: 'u_fb', roles: ['Approver'] })
+    await expect(getActor()).resolves.toEqual({ id: 'u_fb', roles: ['User'] })
   })
 
   it('falls back when the forwarded header is missing required fields', async () => {

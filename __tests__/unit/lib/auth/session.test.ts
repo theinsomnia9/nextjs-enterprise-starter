@@ -7,7 +7,7 @@ beforeAll(() => setAuthEnvStub())
 const payload = {
   userId: 'u_123',
   entraOid: 'oid_abc',
-  roles: ['Approver' as const],
+  roles: ['User' as const],
   name: 'Alice',
   email: 'a@example.com',
   photoUrl: null,
@@ -20,7 +20,7 @@ describe('session encode/decode', () => {
     const decoded = await decodeSession(cookie)
     expect(decoded.userId).toBe('u_123')
     expect(decoded.entraOid).toBe('oid_abc')
-    expect(decoded.roles).toEqual(['Approver'])
+    expect(decoded.roles).toEqual(['User'])
     expect(decoded.email).toBe('a@example.com')
     expect(decoded.iat).toBeGreaterThan(0)
     expect(decoded.exp).toBe(decoded.iat + 12 * 60 * 60)

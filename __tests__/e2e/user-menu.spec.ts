@@ -6,7 +6,7 @@ const BASE = 'http://localhost:3000'
 async function addAuthCookie(context: BrowserContext) {
   const cookie = await buildSessionCookie({
     userId: 'dev-user-alice',
-    roles: ['Approver'],
+    roles: ['User'],
     name: 'Alice',
     email: 'alice@example.com',
   })
@@ -42,7 +42,7 @@ test.describe('UserMenu', () => {
     await page.locator('button[aria-label="Open user menu"]').click()
     await expect(page.getByText('Alice')).toBeVisible()
     await expect(page.getByText('alice@example.com')).toBeVisible()
-    await expect(page.locator('[aria-label="Role: Approver"]')).toBeVisible()
+    await expect(page.locator('[aria-label="Role: User"]')).toBeVisible()
   })
 
   test('sign-out clears session and navigates off /', async ({ context, page }) => {

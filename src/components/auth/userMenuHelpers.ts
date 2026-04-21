@@ -32,8 +32,6 @@ export function roleBadgeClasses(role: Role): string {
   switch (role) {
     case Role.Admin:
       return `${BADGE_BASE} bg-primary text-primary-foreground`
-    case Role.Approver:
-      return `${BADGE_BASE} bg-secondary text-secondary-foreground`
     default:
       return `${BADGE_BASE} bg-muted text-muted-foreground`
   }
@@ -41,6 +39,5 @@ export function roleBadgeClasses(role: Role): string {
 
 export function primaryRole(roles: readonly Role[]): Role {
   if (roles.includes(Role.Admin)) return Role.Admin
-  if (roles.includes(Role.Approver)) return Role.Approver
-  return Role.Requester
+  return Role.User
 }

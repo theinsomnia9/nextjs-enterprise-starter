@@ -37,11 +37,12 @@ describe('validateReturnTo', () => {
 })
 
 describe('cookie options', () => {
-  it('sessionCookieOptions is HttpOnly + Secure + SameSite=Lax + Path=/', async () => {
+  it('sessionCookieOptions is HttpOnly + SameSite=Lax + Path=/ (Secure gated on https)', async () => {
     const { sessionCookieOptions } = await import('@/lib/auth/cookies')
     const o = sessionCookieOptions()
     expect(o.httpOnly).toBe(true)
-    expect(o.secure).toBe(true)
+    // APP_URL is http://localhost in tests, so Secure is off to avoid browsers dropping cookies
+    expect(o.secure).toBe(false)
     expect(o.sameSite).toBe('lax')
     expect(o.path).toBe('/')
     expect(o.maxAge).toBe(12 * 60 * 60)
@@ -51,7 +52,7 @@ describe('cookie options', () => {
     const { oauthPendingCookieOptions } = await import('@/lib/auth/cookies')
     const o = oauthPendingCookieOptions()
     expect(o.httpOnly).toBe(true)
-    expect(o.secure).toBe(true)
+    expect(o.secure).toBe(false)
     expect(o.sameSite).toBe('lax')
     expect(o.path).toBe('/auth/callback')
     expect(o.maxAge).toBe(10 * 60)
