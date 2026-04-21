@@ -87,7 +87,7 @@ export async function GET(req: NextRequest) {
     try {
       tokenResult = await getMsalClient().acquireTokenByCode({
         code,
-        scopes: authConfig.scopes,
+        scopes: [...authConfig.scopes],
         redirectUri: authConfig.redirectUri,
         codeVerifier: pending.codeVerifier,
       })
@@ -111,14 +111,14 @@ export async function GET(req: NextRequest) {
       roles?: unknown
     }
     const entraOid = claims.oid
-    if (!entraOid) {
+    const email = claims.preferred_username
+    if (!entraOid || !email) {
       const res = redirect(`${authConfig.appUrl}/auth/unauthorized?reason=provisioning`)
       clearPendingOnResponse(res)
       return res
     }
 
     const name = claims.name ?? null
-    const email = claims.preferred_username ?? null
     const roles = parseRolesClaim(claims.roles)
 
     let user
