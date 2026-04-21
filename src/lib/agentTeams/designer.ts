@@ -1,4 +1,5 @@
-import { getChatModel } from '@/lib/ai'
+import { getChatModel, chatModelName } from '@/lib/ai'
+import { createSpan, createHistogram, createCounter, logger } from '@/lib/telemetry'
 import { SystemMessage, HumanMessage, AIMessage } from '@langchain/core/messages'
 import { z } from 'zod'
 import type { GraphDiff, TeamDefinition } from './types'
@@ -140,6 +141,16 @@ function buildSystemPrompt(current: TeamDefinition): string {
   ].join('\n')
 }
 
+const llmDuration = createHistogram('llm.call.duration', {
+  description: 'Duration of LLM calls, labeled by provider/model/operation.',
+  unit: 'ms',
+})
+
+const llmTokens = createCounter('llm.tokens.total', {
+  description: 'LLM tokens consumed, labeled by provider/model/operation/direction.',
+  unit: '1',
+})
+
 export interface DesignerDeps {
   model?: string
 }
@@ -152,24 +163,52 @@ export async function runDesigner(
   },
   deps: DesignerDeps = {}
 ): Promise<{ diff: GraphDiff; reply: string }> {
-  const llm = getChatModel({
-    model: deps.model,
-    temperature: 0,
-  }).withStructuredOutput(diffSchema, { name: 'propose_graph_diff' })
+  return createSpan('team.designer.propose', async (span) => {
+    const provider = process.env.LLM_PROVIDER || 'openai'
+    const model = deps.model || chatModelName()
+    const temperature = 0
+    const operation = 'team_designer.propose'
 
-  const messages = [
-    new SystemMessage(buildSystemPrompt(input.current)),
-    ...(input.history ?? []).map((m) =>
-      m.role === 'user' ? new HumanMessage(m.content) : new AIMessage(m.content)
-    ),
-    new HumanMessage(input.message),
-  ]
+    span.setAttribute('llm.provider', provider)
+    span.setAttribute('llm.model', model)
+    span.setAttribute('llm.temperature', temperature)
 
-  const parsed = await llm.invoke(messages)
-  const cleaned = stripNulls(parsed)
-  const diff: GraphDiff = {
-    ops: cleaned.ops as GraphDiff['ops'],
-    rationale: cleaned.rationale,
-  }
-  return { diff, reply: cleaned.rationale }
+    const llm = getChatModel({
+      model: deps.model,
+      temperature,
+    }).withStructuredOutput(diffSchema, { name: 'propose_graph_diff' })
+
+    const messages = [
+      new SystemMessage(buildSystemPrompt(input.current)),
+      ...(input.history ?? []).map((m) =>
+        m.role === 'user' ? new HumanMessage(m.content) : new AIMessage(m.content)
+      ),
+      new HumanMessage(input.message),
+    ]
+
+    const startedAt = performance.now()
+    let parsed
+    try {
+      parsed = await llm.invoke(messages)
+    } finally {
+      const durationMs = performance.now() - startedAt
+      llmDuration.record(durationMs, { provider, model, operation })
+      logger.info('llm.call', {
+        provider,
+        model,
+        operation,
+        durationMs: Math.round(durationMs),
+      })
+    }
+
+    const cleaned = stripNulls(parsed)
+    const diff: GraphDiff = {
+      ops: cleaned.ops as GraphDiff['ops'],
+      rationale: cleaned.rationale,
+    }
+    // LangChain's withStructuredOutput doesn't surface token usage on the parsed output.
+    // Token counting is a deliberate follow-up once we wire the raw AIMessage path.
+    void llmTokens
+    return { diff, reply: cleaned.rationale }
+  })
 }
