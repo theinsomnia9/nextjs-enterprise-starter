@@ -43,12 +43,12 @@ test.describe('Theme Toggle', () => {
     const html = page.locator('html')
     await expect(html).not.toHaveClass(/dark/)
 
-    let themeItem = await openThemeItem(page)
+    const themeItem = await openThemeItem(page)
     await themeItem.click()
     await expect(html).toHaveClass(/dark/)
 
-    // Re-open menu after click (menu closed because onSelect without preventDefault for a normal click)
-    themeItem = await openThemeItem(page)
+    // UserMenu calls preventDefault on the theme onSelect, so the
+    // dropdown stays open. Click the same item again to toggle back.
     await themeItem.click()
     await expect(html).not.toHaveClass(/dark/)
   })

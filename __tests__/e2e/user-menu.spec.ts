@@ -40,7 +40,7 @@ test.describe('UserMenu', () => {
     await addAuthCookie(context)
     await page.goto(`${BASE}/`)
     await page.locator('button[aria-label="Open user menu"]').click()
-    await expect(page.getByText('Alice')).toBeVisible()
+    await expect(page.getByText('Alice', { exact: true })).toBeVisible()
     await expect(page.getByText('alice@example.com')).toBeVisible()
     await expect(page.locator('[aria-label="Role: User"]')).toBeVisible()
   })
