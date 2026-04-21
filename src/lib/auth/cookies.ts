@@ -54,7 +54,7 @@ export const SESSION_COOKIE = authConfig.sessionCookieName
 // Entra to re-prompt for credentials (prompt=login). Without it, Entra's
 // SSO cookie would silently re-issue a code and the user would appear
 // to "bounce back" signed in after clicking Sign out.
-export const POST_LOGOUT_COOKIE = 'post_logout'
+export const POST_LOGOUT_COOKIE = authConfig.postLogoutCookieName
 
 export function postLogoutCookieOptions(): CookieOptions {
   return {
@@ -62,7 +62,7 @@ export function postLogoutCookieOptions(): CookieOptions {
     secure: isHttps,
     sameSite: 'lax',
     path: '/auth/signin',
-    maxAge: 300,
+    maxAge: authConfig.postLogoutTtlSeconds,
   }
 }
 

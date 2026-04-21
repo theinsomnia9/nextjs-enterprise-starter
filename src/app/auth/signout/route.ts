@@ -10,26 +10,18 @@ import {
 
 export const runtime = 'nodejs'
 
-function endSessionUrl(): string {
-  const params = new URLSearchParams({
+const END_SESSION_URL = `${authConfig.authorityUrl}/oauth2/v2.0/logout?${new URLSearchParams(
+  {
     post_logout_redirect_uri: `${authConfig.appUrl}/auth/signin`,
     client_id: authConfig.clientId,
-  })
-  return `${authConfig.authorityUrl}/oauth2/v2.0/logout?${params.toString()}`
-}
+  }
+).toString()}`
 
-async function clearAndRedirect(): Promise<NextResponse> {
+async function handler(_req: NextRequest): Promise<NextResponse> {
   const store = await cookies()
   store.set(SESSION_COOKIE, '', clearSessionCookieOptions())
   store.set(POST_LOGOUT_COOKIE, '1', postLogoutCookieOptions())
-  return NextResponse.redirect(endSessionUrl(), { status: 302 })
+  return NextResponse.redirect(END_SESSION_URL, { status: 302 })
 }
 
-export async function POST(_req: NextRequest) {
-  return clearAndRedirect()
-}
-
-// Allow GET too so a plain <a href="/auth/signout"> works without a form.
-export async function GET(_req: NextRequest) {
-  return clearAndRedirect()
-}
+export { handler as GET, handler as POST }

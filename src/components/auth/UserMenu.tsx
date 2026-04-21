@@ -24,6 +24,21 @@ import {
   roleBadgeClasses,
 } from '@/components/auth/userMenuHelpers'
 
+function UserAvatar({
+  photoUrl,
+  initials,
+}: {
+  photoUrl: string | null
+  initials: string
+}) {
+  return (
+    <Avatar className="h-9 w-9">
+      <AvatarImage src={photoUrl ?? undefined} alt="" />
+      <AvatarFallback className="text-xs font-medium">{initials}</AvatarFallback>
+    </Avatar>
+  )
+}
+
 export default function UserMenu() {
   const session = useSession()
   const pathname = usePathname() ?? '/'
@@ -46,22 +61,12 @@ export default function UserMenu() {
             aria-label="Open user menu"
             className="h-9 w-9 rounded-full border border-border bg-card/80 p-0 shadow-sm backdrop-blur hover:bg-accent"
           >
-            <Avatar className="h-9 w-9">
-              <AvatarImage src={session.photoUrl ?? undefined} alt="" />
-              <AvatarFallback className="text-xs font-medium">
-                {initials}
-              </AvatarFallback>
-            </Avatar>
+            <UserAvatar photoUrl={session.photoUrl} initials={initials} />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" sideOffset={8} className="w-64">
           <div className="flex items-center gap-3 px-2 py-2">
-            <Avatar className="h-9 w-9">
-              <AvatarImage src={session.photoUrl ?? undefined} alt="" />
-              <AvatarFallback className="text-xs font-medium">
-                {initials}
-              </AvatarFallback>
-            </Avatar>
+            <UserAvatar photoUrl={session.photoUrl} initials={initials} />
             <div className="min-w-0 flex-1">
               {session.name ? (
                 <div className="truncate text-sm font-medium" title={session.name}>

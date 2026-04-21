@@ -31,7 +31,9 @@ export const authConfig = {
   scopes: ['openid', 'profile', 'email', 'offline_access', 'User.Read'],
   sessionCookieName: 'session',
   oauthPendingCookieName: 'oauth_pending',
+  postLogoutCookieName: 'post_logout',
   sessionTtlSeconds: 12 * 60 * 60,
   oauthPendingTtlSeconds: 10 * 60,
+  postLogoutTtlSeconds: 5 * 60,
   slidingRefreshThresholdSeconds: 6 * 60 * 60,
 } as const
