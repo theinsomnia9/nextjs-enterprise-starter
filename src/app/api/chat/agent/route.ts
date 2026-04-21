@@ -37,13 +37,6 @@ export const POST = withApi('http.chat.agent', async (req) => {
   addSpanAttribute('chat.has_existing_id', !!chatId)
   addSpanAttribute('chat.has_thread_id', !!threadId)
 
-  if (!process.env.OPENAI_API_KEY) {
-    throw new Error('OPENAI_API_KEY is not configured')
-  }
-  if (!process.env.TAVILY_API_KEY) {
-    throw new Error('TAVILY_API_KEY is not configured')
-  }
-
   const chat = await resolveChat(chatId, message)
   if (!chat) throw notFound('Chat', chatId ?? undefined)
 

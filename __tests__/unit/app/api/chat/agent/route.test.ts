@@ -1,20 +1,8 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { POST } from '@/app/api/chat/agent/route'
 import { z } from 'zod'
 
 describe('POST /api/chat/agent', () => {
-  let originalOpenAIKey: string | undefined
-  let originalTavilyKey: string | undefined
-
-  beforeEach(() => {
-    originalOpenAIKey = process.env.OPENAI_API_KEY
-    originalTavilyKey = process.env.TAVILY_API_KEY
-  })
-
-  afterEach(() => {
-    process.env.OPENAI_API_KEY = originalOpenAIKey
-    process.env.TAVILY_API_KEY = originalTavilyKey
-  })
 
   it('should return 400 when message is missing', async () => {
     const request = new Request('http://localhost:3000/api/chat/agent', {
@@ -44,39 +32,6 @@ describe('POST /api/chat/agent', () => {
     expect(data.error).toBeDefined()
   })
 
-  it('should return 500 when OPENAI_API_KEY is missing', async () => {
-    delete process.env.OPENAI_API_KEY
-    process.env.TAVILY_API_KEY = 'tvly-test'
-
-    const request = new Request('http://localhost:3000/api/chat/agent', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: 'Hello', chatId: null }),
-    })
-
-    const response = await POST(request, { params: Promise.resolve({}) })
-
-    expect(response.status).toBe(500)
-    const data = await response.json()
-    expect(data.error).toContain('OPENAI_API_KEY')
-  })
-
-  it('should return 500 when TAVILY_API_KEY is missing', async () => {
-    process.env.OPENAI_API_KEY = 'sk-test'
-    delete process.env.TAVILY_API_KEY
-
-    const request = new Request('http://localhost:3000/api/chat/agent', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: 'Hello', chatId: null }),
-    })
-
-    const response = await POST(request, { params: Promise.resolve({}) })
-
-    expect(response.status).toBe(500)
-    const data = await response.json()
-    expect(data.error).toContain('TAVILY_API_KEY')
-  })
 
   it('should validate request schema correctly', () => {
     const requestSchema = z.object({
