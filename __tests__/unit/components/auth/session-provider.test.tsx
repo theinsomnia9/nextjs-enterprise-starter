@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import { SessionProvider } from '@/components/auth/session-provider'
-import { useSession } from '@/components/auth/use-session'
+import { SessionProvider, useSession } from '@/components/auth/session-provider'
 
 function Consumer() {
   const s = useSession()
@@ -27,10 +26,8 @@ describe('SessionProvider / useSession', () => {
     expect(screen.getByText('no-session')).toBeInTheDocument()
   })
 
-  it('throws when useSession is called outside a provider', () => {
-    const origError = console.error
-    console.error = () => {}
-    expect(() => render(<Consumer />)).toThrow(/SessionProvider/)
-    console.error = origError
+  it('returns null when called outside a provider', () => {
+    render(<Consumer />)
+    expect(screen.getByText('no-session')).toBeInTheDocument()
   })
 })
