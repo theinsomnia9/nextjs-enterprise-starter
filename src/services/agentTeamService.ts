@@ -1,7 +1,29 @@
 import { agentTeamRepository, type IAgentTeamRepository } from '@/lib/agentTeams/repository'
-import { notFound, validationError, forbidden } from '@/lib/errors/AppError'
+import { notFound, validationError, forbidden, AppError } from '@/lib/errors/AppError'
 import { emptyDefinition, validateTeamDefinition } from '@/lib/agentTeams/validator'
 import type { AgentTeamDetail, TeamDefinition } from '@/lib/agentTeams/types'
+import { createSpan, createCounter, createHistogram, logger } from '@/lib/telemetry'
+
+const saveTotal = createCounter('agent_team.save.total', {
+  description: 'Agent team save operations, labeled by result.',
+  unit: '1',
+})
+
+const saveDuration = createHistogram('agent_team.save.duration', {
+  description: 'Duration of agent team save operations.',
+  unit: 'ms',
+})
+
+type SaveResult = 'ok' | 'validation_error' | 'forbidden' | 'not_found' | 'error'
+
+function classifyError(err: unknown): SaveResult {
+  if (err instanceof AppError) {
+    if (err.code === 'NOT_FOUND') return 'not_found'
+    if (err.code === 'FORBIDDEN') return 'forbidden'
+    if (err.code === 'VALIDATION_ERROR') return 'validation_error'
+  }
+  return 'error'
+}
 
 export interface AgentTeamServiceDeps {
   repository: IAgentTeamRepository
@@ -54,14 +76,50 @@ export class AgentTeamService {
       isActive?: boolean
     }
   ): Promise<AgentTeamDetail> {
-    await this.get(id, ownerId)
-    if (patch.definition) {
-      const report = validateTeamDefinition(patch.definition)
-      if (!report.ok) {
-        throw validationError('Team definition is invalid', { issues: report.issues })
+    return createSpan('team.update', async (span) => {
+      const startedAt = performance.now()
+      let result: SaveResult = 'ok'
+      try {
+        await this.get(id, ownerId)
+        const changedFields = Object.keys(patch).filter(
+          (k) => (patch as Record<string, unknown>)[k] !== undefined
+        )
+        span.setAttribute('team.id', id)
+        span.setAttribute('user.id', ownerId)
+        span.setAttribute('changed_fields', changedFields.join(','))
+
+        if (patch.definition) {
+          const report = validateTeamDefinition(patch.definition)
+          if (!report.ok) {
+            result = 'validation_error'
+            logger.warn('agent_team.save', {
+              teamId: id,
+              result,
+              issueCount: report.issues.length,
+            })
+            throw validationError('Team definition is invalid', { issues: report.issues })
+          }
+        }
+
+        const updated = await this.repo.update(id, patch)
+        logger.info('agent_team.save', {
+          teamId: id,
+          changedFields: changedFields.join(','),
+          result,
+        })
+        return updated
+      } catch (err) {
+        if (result === 'ok') result = classifyError(err)
+        if (result === 'error') {
+          logger.error('agent_team.save failed', err as Error, { teamId: id })
+        }
+        throw err
+      } finally {
+        const durationMs = performance.now() - startedAt
+        saveTotal.add(1, { result })
+        saveDuration.record(durationMs, { result })
       }
-    }
-    return this.repo.update(id, patch)
+    })
   }
 
   async delete(id: string, ownerId: string): Promise<void> {
