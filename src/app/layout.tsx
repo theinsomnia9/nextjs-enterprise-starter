@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import { ClientProviders } from '@/components/ClientProviders'
 import GlobalNav from '@/components/nav/GlobalNav'
+import UserMenu from '@/components/auth/UserMenu'
 import { SessionProvider } from '@/components/auth/session-provider'
 import { getSessionForClient } from '@/lib/auth/actor'
 
@@ -25,6 +26,7 @@ export default async function RootLayout({
       <body className={inter.className}>
         <ClientProviders>
           <SessionProvider session={session}>
+            <UserMenu />
             <GlobalNav />
             {children}
           </SessionProvider>
