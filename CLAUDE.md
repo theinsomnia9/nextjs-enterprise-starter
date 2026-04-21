@@ -99,7 +99,25 @@ Microsoft Entra ID via MSAL Node (Authorization Code + PKCE, single-tenant). **N
 
 ### Telemetry
 
-`src/instrumentation.ts` is the Next.js instrumentation hook. Node runtime uses `src/lib/telemetry/instrumentation.node.ts`; Edge runtime uses `.edge.ts`. Wrap operations with `createSpan('span.name', async () => {...})` from `src/lib/telemetry/tracing.ts`.
+`src/instrumentation.ts` is the Next.js instrumentation hook. Node runtime uses `src/lib/telemetry/instrumentation.node.ts`; Edge runtime uses `.edge.ts`. All three pillars — traces, metrics, logs — share one `Resource` built by `src/lib/telemetry/resource.ts`.
+
+Import everything from the barrel:
+
+```ts
+import { createSpan, createCounter, createHistogram, logger } from '@/lib/telemetry'
+```
+
+**Tracing:** wrap operations with `createSpan('domain.verb', async (span) => {...})`.
+
+**Metrics:** cache instruments at module scope — `const saveTotal = createCounter('agent_team.save.total', { unit: '1' })`. Naming is `<domain>.<noun>.total` for counters, `<domain>.<verb>.duration` (unit `ms`) for histograms.
+
+**Metric attribute cardinality rule:** metric attribute values must be low-cardinality enums. **Never** put `user.id`, `team.id`, request IDs, or free-form strings on a metric attribute — those belong on spans and log records. Violating this rule will blow up Prometheus memory.
+
+**Logs:** `logger.info('event', { attrs })` and friends. Trace correlation (`trace_id` / `span_id`) is attached automatically from the active span. Use `logger.error(msg, err, attrs?)` for exceptions. `childLogger({ base })` binds scope attributes.
+
+**Prometheus metric names:** the collector's `prometheus` exporter uses `namespace: nextjs`, so OTel metric `agent_team.save.total` becomes `nextjs_agent_team_save_total` in PromQL.
+
+**Reference implementations** (copy these patterns for new features): `agentTeamService.update()`, `POST /api/agent-teams/[id]/run`, `runDesigner()` in `src/lib/agentTeams/designer.ts`.
 
 ### Testing Conventions
 
