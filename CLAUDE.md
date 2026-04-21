@@ -112,3 +112,12 @@ Microsoft Entra ID via MSAL Node (Authorization Code + PKCE, single-tenant). **N
 ### Path Alias
 
 `@/` maps to `src/` (configured in both `tsconfig.json` and `vitest.config.ts`).
+
+### AI Provider
+
+LLM calls route through `src/lib/ai/`. Two provider kinds, switched via `LLM_PROVIDER`:
+
+- `openai` — uses the `openai` SDK and `@langchain/openai`'s `ChatOpenAI`. Takes `OPENAI_API_KEY`, optional `OPENAI_BASE_URL` (for OpenAI-compatible endpoints — Azure AI Foundry serverless, APIM proxies, Ollama), and `OPENAI_CHAT_MODEL`.
+- `azure-openai` — classic Azure OpenAI. Uses `AzureOpenAI` and `AzureChatOpenAI`. Takes `AZURE_OPENAI_API_KEY`, `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_API_VERSION`, `AZURE_OPENAI_CHAT_DEPLOYMENT`.
+
+Callers use `getChatClient()` (raw OpenAI-shaped client), `getChatModel({model, temperature})` (LangChain chat model), or `chatModelName()` (the string to pass as `model` on raw SDK calls). On Azure, `getChatModel`'s `model` override is ignored — the deployment env wins. For agent-team nodes where the UI lets a user pick a model per node, that string is interpreted as a deployment name under the `azure-openai` provider. An ESLint rule forbids importing `openai` or `@langchain/openai` outside `src/lib/ai/**`.
