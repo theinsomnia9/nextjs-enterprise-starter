@@ -27,12 +27,11 @@ Use `createSpan` from `src/lib/telemetry/tracing.ts`:
 ```ts
 import { createSpan } from '@/lib/telemetry/tracing'
 
-export async function lockApproval(id: string, userId: string) {
-  return createSpan('approvals.lock', async (span) => {
-    span.setAttribute('approval.id', id)
-    span.setAttribute('user.id', userId)
+export async function provisionUser(entraOid: string) {
+  return createSpan('auth.provision', async (span) => {
+    span.setAttribute('actor.entraOid', entraOid)
     // ... work ...
-    span.addEvent('approval.locked')
+    span.addEvent('auth.user_upserted')
     return result
   })
 }
@@ -46,9 +45,9 @@ Keep names stable — they're aggregated in Jaeger/Prometheus dashboards.
 
 | Kind | Pattern | Examples |
 |---|---|---|
-| HTTP handler | `http.{METHOD}.{route}` | `http.POST./api/approvals`, `http.GET./api/chat/:id/messages` |
-| DB operation | `db.{operation}.{table}` | `db.select.approvals`, `db.update.messages` |
-| Business logic | `{domain}.{verb}` | `approvals.lock`, `chat.stream`, `agent.tool.call` |
+| HTTP handler | `http.{METHOD}.{route}` | `http.GET./auth/callback`, `http.POST./api/thing` |
+| DB operation | `db.{operation}.{table}` | `db.select.users`, `db.update.users` |
+| Business logic | `{domain}.{verb}` | `auth.callback`, `auth.provision` |
 
 ## Attributes
 

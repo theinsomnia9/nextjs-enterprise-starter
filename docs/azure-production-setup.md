@@ -242,9 +242,6 @@ Create one Key Vault secret per row. Secret names use hyphens (Key Vault disallo
 | `auth-session-secret` | `AUTH_SESSION_SECRET` | **Yes** | `openssl rand -base64 48` (see §4.3) |
 | `app-url` | `APP_URL` | **Yes** | e.g., `https://<prod-host>` — **no trailing slash** |
 | `database-url` | `DATABASE_URL` | **Yes** | Azure Postgres connection string (see §6) |
-| `openai-api-key` | `OPENAI_API_KEY` | **Yes** | OpenAI console. Used by chat + agent features. |
-| `tavily-api-key` | `TAVILY_API_KEY` | **Yes** | tavily.com console. Used by agent web-search tool. |
-| `cron-secret` | `CRON_SECRET` | **Yes** | `openssl rand -hex 32`. Protects `/api/cron/*`. |
 
 Non-secret env vars — set these directly on compute, **not** in Key Vault (they're checked into operational config, not credentials):
 
@@ -486,9 +483,6 @@ az webapp config appsettings set \
     AUTH_SESSION_SECRET="@Microsoft.KeyVault(VaultName=kv-<app>-<env>-<region>;SecretName=auth-session-secret)" \
     APP_URL="@Microsoft.KeyVault(VaultName=kv-<app>-<env>-<region>;SecretName=app-url)" \
     DATABASE_URL="@Microsoft.KeyVault(VaultName=kv-<app>-<env>-<region>;SecretName=database-url)" \
-    OPENAI_API_KEY="@Microsoft.KeyVault(VaultName=kv-<app>-<env>-<region>;SecretName=openai-api-key)" \
-    TAVILY_API_KEY="@Microsoft.KeyVault(VaultName=kv-<app>-<env>-<region>;SecretName=tavily-api-key)" \
-    CRON_SECRET="@Microsoft.KeyVault(VaultName=kv-<app>-<env>-<region>;SecretName=cron-secret)" \
     NODE_ENV=production \
     NEXT_PUBLIC_APP_URL="https://<prod-host>"
 ```
@@ -605,13 +599,9 @@ These are the ones that actually bite in prod. Verify each during the first depl
 
 6. **Role revocation is not instant.** Design spec "Known limitation": role changes in Entra propagate at next sign-in or the sliding-refresh boundary (up to 12h). If an employee is terminated, disabling the user in Entra does not immediately kill their session. If that's unacceptable, shorten `sessionTtlSeconds` via code change, or migrate to DB-backed sessions (bigger change).
 
-7. **Stateless compute across replicas is required.** SSE uses a `globalThis`-stored `Set` of connections (`src/lib/approvals/sseServer.ts`). A request hitting replica A mutates data; a client subscribed via replica B gets the event only if sticky-session or a broadcast bus is in place. For v1 with a single replica this is fine; at scale, add Redis pub/sub or use Azure SignalR. Capture in backlog.
+7. **Post-logout redirect URI must be registered in Entra.** The Entra app registration must list **both** `https://<prod-host>/auth/callback` **and** `https://<prod-host>/auth/signin` under **Web → Redirect URIs** (§3.1, §3.3). If only the callback is registered, federated sign-out strands users on Microsoft's generic "You signed out of your account" page with no path back to the app — the sign-out appears to succeed but the user experience is broken. Verify by running `az ad app show --id <AZURE_AD_CLIENT_ID> --query "web.redirectUris"` after deploy; both URIs must be in the list.
 
-8. **In-memory agent memory resets on restart.** `getAgent()` uses LangGraph's `MemorySaver` (`src/lib/agent/agent.ts`). Every pod restart wipes conversation state. If that matters in prod, swap to `@langchain/langgraph-checkpoint-postgres`. Note in release notes.
-
-9. **Post-logout redirect URI must be registered in Entra.** The Entra app registration must list **both** `https://<prod-host>/auth/callback` **and** `https://<prod-host>/auth/signin` under **Web → Redirect URIs** (§3.1, §3.3). If only the callback is registered, federated sign-out strands users on Microsoft's generic "You signed out of your account" page with no path back to the app — the sign-out appears to succeed but the user experience is broken. Verify by running `az ad app show --id <AZURE_AD_CLIENT_ID> --query "web.redirectUris"` after deploy; both URIs must be in the list.
-
-10. **Single-replica assumption for the `post_logout` cookie.** The cookie that tells `/auth/signin` to force `prompt=login` (§3.3.1) is set by `/auth/signout` on replica A and read by `/auth/signin` on (potentially) replica B. Because the cookie lives in the browser, not server memory, this works across replicas — but only if sticky sessions aren't required for some *other* reason (they are for SSE, see #7). If you front-door across replicas, verify the `post_logout` cookie survives the redirect chain (scoped `Path=/auth/signin`, `SameSite=Lax` — a cross-site referer during the `login.microsoftonline.com` → `/auth/signin` hop will still send it, but verify in DevTools on first prod deploy).
+8. **`post_logout` cookie behavior across replicas.** The cookie that tells `/auth/signin` to force `prompt=login` (§3.3.1) is set by `/auth/signout` and read on the next `/auth/signin` hit. Because the cookie lives in the browser, not server memory, this works across replicas. If you front-door across replicas, verify the `post_logout` cookie survives the redirect chain (scoped `Path=/auth/signin`, `SameSite=Lax` — a cross-site referer during the `login.microsoftonline.com` → `/auth/signin` hop will still send it, but verify in DevTools on first prod deploy).
 
 ---
 

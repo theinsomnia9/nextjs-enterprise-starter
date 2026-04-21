@@ -20,7 +20,7 @@ Integration tests hit the real test PostgreSQL database running on port 5433.
 DATABASE_URL="postgresql://user:password@localhost:5433/nextjs_boilerplate_test?schema=public" npm run test:integration
 
 # Run a specific file
-DATABASE_URL="postgresql://user:password@localhost:5433/nextjs_boilerplate_test?schema=public" npm run test:integration -- __tests__/integration/actions/approvals.test.ts
+DATABASE_URL="postgresql://user:password@localhost:5433/nextjs_boilerplate_test?schema=public" npm run test:integration -- __tests__/integration/auth/callback.test.ts
 ```
 
 ## Environment
@@ -32,4 +32,4 @@ The test database URL is `TEST_DATABASE_URL` in `.env`. Pass it as `DATABASE_URL
 - Tests use `prisma` directly to seed and clean up data.
 - Each test file cleans up its own records in `afterAll`.
 - `beforeEach` deletes rows seeded by the test to ensure isolation between tests in the same file.
-- Server Action mocks: `__tests__/helpers/mockActor.ts` mocks `getActor`/`getActorId`; `__tests__/helpers/broadcastSpy.ts` spies on `broadcastApprovalEvent`.
+- Server mocks: `__tests__/helpers/mockActor.ts` mocks `getActor`/`getActorId`.

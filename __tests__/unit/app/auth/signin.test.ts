@@ -34,11 +34,11 @@ describe('GET /auth/signin', () => {
 
   it('stores a valid returnTo in oauth_pending when query is present and safe', async () => {
     const { GET } = await import('@/app/auth/signin/route')
-    const req = new Request('http://localhost:3000/auth/signin?returnTo=/approvals/1')
+    const req = new Request('http://localhost:3000/auth/signin?returnTo=/dashboard')
     await GET(req as never)
     const [, body] = mockStore.set.mock.calls[0]
     const decoded = JSON.parse(Buffer.from(body as string, 'base64').toString('utf8'))
-    expect(decoded.returnTo).toBe('/approvals/1')
+    expect(decoded.returnTo).toBe('/dashboard')
   })
 
   it('drops an unsafe returnTo', async () => {

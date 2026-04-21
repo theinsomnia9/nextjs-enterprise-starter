@@ -6,7 +6,7 @@ beforeAll(() => setAuthEnvStub())
 describe('validateReturnTo', () => {
   it('accepts same-origin relative paths', async () => {
     const { validateReturnTo } = await import('@/lib/auth/cookies')
-    expect(validateReturnTo('/approvals/123')).toBe('/approvals/123')
+    expect(validateReturnTo('/dashboard')).toBe('/dashboard')
     expect(validateReturnTo('/')).toBe('/')
     expect(validateReturnTo('/deep/path?x=1&y=2')).toBe('/deep/path?x=1&y=2')
   })
