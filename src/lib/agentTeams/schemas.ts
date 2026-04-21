@@ -6,7 +6,7 @@ const triggerData = z.object({
   kind: z.literal('trigger'),
   label: z.string().min(1),
   description: z.string().optional(),
-  inputSchema: z.record(z.unknown()).optional(),
+  inputSchema: z.record(z.string(), z.unknown()).optional(),
 })
 
 const agentData = z.object({
@@ -26,7 +26,7 @@ const toolData = z.object({
   label: z.string().min(1),
   description: z.string().optional(),
   toolName: z.string().min(1),
-  config: z.record(z.unknown()).optional(),
+  config: z.record(z.string(), z.unknown()).optional(),
 })
 
 const guardrailData = z.object({

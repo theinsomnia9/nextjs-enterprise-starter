@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
 
   const msal = getMsalClient()
   const authUrl = await msal.getAuthCodeUrl({
-    scopes: authConfig.scopes,
+    scopes: [...authConfig.scopes],
     redirectUri: authConfig.redirectUri,
     state,
     codeChallenge: challenge,

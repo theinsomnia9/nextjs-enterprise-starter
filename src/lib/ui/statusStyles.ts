@@ -1,4 +1,4 @@
-import type { ApprovalStatus } from '@prisma/client'
+import type { ApprovalStatus } from '@/generated/prisma/client'
 import type { PriorityCategory } from '@/lib/approvals/types'
 
 export const STATUS_COLORS: Record<ApprovalStatus, string> = {

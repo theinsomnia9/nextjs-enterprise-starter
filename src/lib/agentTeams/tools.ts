@@ -6,7 +6,6 @@ import { getToolSpec } from './toolRegistry'
 
 // LangChain's `tool()` is an overloaded factory whose narrow return types don't
 // union cleanly; the agent runtime takes any structured tool, so we widen here.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyTool = any
 
 export interface BuiltTool {

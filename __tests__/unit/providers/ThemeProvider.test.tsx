@@ -1,5 +1,4 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { useContext, createContext } from 'react'
 import { render, screen, fireEvent, renderHook, waitFor } from '../../setup/test-utils'
 import { ThemeProvider, useTheme } from '@/providers/ThemeProvider'
 

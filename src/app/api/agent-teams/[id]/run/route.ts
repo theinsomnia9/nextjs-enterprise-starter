@@ -11,7 +11,7 @@ export const POST = withApi<{ id: string }>('agentTeams.run', async (req, { para
   const actor = await getActor()
   const body = await req.json()
   const parsed = runTeamSchema.safeParse(body)
-  if (!parsed.success) throw validationError(parsed.error.errors[0].message)
+  if (!parsed.success) throw validationError(parsed.error.issues[0].message)
 
   const team = await agentTeamService.get(id, actor.id)
 

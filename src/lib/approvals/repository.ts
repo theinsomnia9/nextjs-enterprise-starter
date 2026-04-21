@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma'
-import type { ApprovalCategory, ApprovalRequest, ApprovalStatus as PrismaApprovalStatus, PriorityConfig, Prisma } from '@prisma/client'
+import type { ApprovalCategory, ApprovalRequest, ApprovalStatus as PrismaApprovalStatus, PriorityConfig, Prisma } from '@/generated/prisma/client'
 
 type UserSelect = { id: string; name: string | null; email: string | null }
 type WithRequester = ApprovalRequest & { requester: UserSelect }

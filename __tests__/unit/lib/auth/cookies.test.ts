@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll } from 'vitest'
 import { setAuthEnvStub } from '../../../helpers/authEnv'
 
-beforeAll(() => setAuthEnvStub())
+beforeAll(() => setAuthEnvStub({ APP_URL: 'https://app.example.com' }))
 
 describe('validateReturnTo', () => {
   it('accepts same-origin relative paths', async () => {

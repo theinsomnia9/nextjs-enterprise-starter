@@ -8,7 +8,7 @@ import { validationError } from '@/lib/errors/AppError'
 export const POST = withApi('approvals.submit', async (req) => {
   const body = await req.json()
   const parsed = createApprovalSchema.safeParse(body)
-  if (!parsed.success) throw validationError(parsed.error.errors[0].message)
+  if (!parsed.success) throw validationError(parsed.error.issues[0].message)
 
   const request = await approvalService.createApproval({
     title: parsed.data.title,

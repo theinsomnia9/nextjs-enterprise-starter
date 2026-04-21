@@ -79,7 +79,7 @@ test.describe('Chat Page', () => {
     await expect(assistantMessages.first()).toBeVisible({ timeout: 30000 })
   })
 
-  test('should persist theme preference', async ({ page, context }) => {
+  test('should persist theme preference', async ({ page }) => {
     const themeToggle = page.getByTestId('theme-toggle')
 
     await themeToggle.click()

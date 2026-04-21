@@ -4,8 +4,14 @@ const mockPrismaClient = vi.fn(function () {
   return { $connect: vi.fn(), $disconnect: vi.fn() }
 })
 
-vi.mock('@prisma/client', () => ({
+vi.mock('@/generated/prisma/client', () => ({
   PrismaClient: mockPrismaClient,
+}))
+
+vi.mock('@prisma/adapter-pg', () => ({
+  PrismaPg: vi.fn(function () {
+    return {}
+  }),
 }))
 
 describe('prisma singleton', () => {
@@ -36,13 +42,13 @@ describe('prisma singleton', () => {
 
   it('should store prisma on globalThis in non-production', async () => {
     const originalEnv = process.env.NODE_ENV
-    process.env.NODE_ENV = 'development'
+    vi.stubEnv('NODE_ENV', 'development')
 
     const mod = await import('@/lib/prisma')
     const g = globalThis as unknown as { prisma: unknown }
 
     expect(g.prisma).toBe(mod.prisma)
 
-    process.env.NODE_ENV = originalEnv
+    vi.stubEnv('NODE_ENV', originalEnv ?? 'test')
   })
 })

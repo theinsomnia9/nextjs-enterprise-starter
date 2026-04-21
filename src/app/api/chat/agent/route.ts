@@ -30,7 +30,7 @@ function toAgentMessage(role: string, content: string) {
 export const POST = withApi('http.chat.agent', async (req) => {
   const body = await req.json()
   const parsed = requestSchema.safeParse(body)
-  if (!parsed.success) throw validationError(parsed.error.errors[0].message)
+  if (!parsed.success) throw validationError(parsed.error.issues[0].message)
   const { message, chatId, threadId } = parsed.data
 
   addSpanAttribute('chat.message_length', message.length)

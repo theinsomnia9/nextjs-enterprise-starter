@@ -1,7 +1,7 @@
 import { IApprovalRepository, approvalRepository } from '@/lib/approvals/repository'
 import { notFound, alreadyResolved, lockedByOther, notCurrentReviewer, validationError } from '@/lib/errors/AppError'
 import { type PriorityConfigValues } from '@/lib/approvals/types'
-import type { Prisma } from '@prisma/client'
+import type { Prisma } from '@/generated/prisma/client'
 import { calculatePriorityScore } from '@/lib/approvals/priorityScore'
 
 export interface ApprovalServiceDeps {

@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma'
-import type { Prisma, Workflow } from '@prisma/client'
+import type { Prisma, Workflow } from '@/generated/prisma/client'
 import type { AgentTeamDetail, AgentTeamSummary, TeamDefinition } from './types'
 
 export interface IAgentTeamRepository {

@@ -8,7 +8,6 @@ vi.mock('reactflow', () => {
     nodes,
     edges,
     onNodesChange,
-    onEdgesChange,
     onConnect,
   }: any) => (
     <div data-testid="react-flow">

@@ -15,7 +15,7 @@ describe('wrapAction', () => {
   })
 
   it('returns ok result with data on success', async () => {
-    vi.mocked(getActor).mockResolvedValue({ id: 'user-1' })
+    vi.mocked(getActor).mockResolvedValue({ id: 'user-1', roles: ['Requester'] })
     const result = await wrapAction('test.action', async (actor) => ({ hello: actor.id }))
     expect(result).toEqual({ ok: true, data: { hello: 'user-1' } })
   })
@@ -34,7 +34,7 @@ describe('wrapAction', () => {
   })
 
   it('translates ZodError to VALIDATION with fields record', async () => {
-    vi.mocked(getActor).mockResolvedValue({ id: 'user-1' })
+    vi.mocked(getActor).mockResolvedValue({ id: 'user-1', roles: ['Requester'] })
     const schema = z.object({ name: z.string().min(1, 'name required') })
     const result = await wrapAction('test.action', async () => {
       schema.parse({ name: '' })
@@ -51,7 +51,7 @@ describe('wrapAction', () => {
   })
 
   it('translates AppError to its code and message', async () => {
-    vi.mocked(getActor).mockResolvedValue({ id: 'user-1' })
+    vi.mocked(getActor).mockResolvedValue({ id: 'user-1', roles: ['Requester'] })
     const result = await wrapAction('test.action', async () => {
       throw notFound('Request', 'abc')
     })
@@ -62,7 +62,7 @@ describe('wrapAction', () => {
   })
 
   it('passes lockedByOther details through unchanged', async () => {
-    vi.mocked(getActor).mockResolvedValue({ id: 'user-1' })
+    vi.mocked(getActor).mockResolvedValue({ id: 'user-1', roles: ['Requester'] })
     const result = await wrapAction('test.action', async () => {
       throw lockedByOther('Bob')
     })
@@ -73,7 +73,7 @@ describe('wrapAction', () => {
   })
 
   it('sanitizes unknown errors to INTERNAL', async () => {
-    vi.mocked(getActor).mockResolvedValue({ id: 'user-1' })
+    vi.mocked(getActor).mockResolvedValue({ id: 'user-1', roles: ['Requester'] })
     const result = await wrapAction('test.action', async () => {
       throw new Error('secret internal detail')
     })
@@ -84,9 +84,9 @@ describe('wrapAction', () => {
   })
 
   it('passes the resolved actor to the callback', async () => {
-    vi.mocked(getActor).mockResolvedValue({ id: 'alice' })
+    vi.mocked(getActor).mockResolvedValue({ id: 'alice', roles: ['Requester'] })
     const cb = vi.fn().mockResolvedValue('ok')
     await wrapAction('test.action', cb)
-    expect(cb).toHaveBeenCalledWith({ id: 'alice' })
+    expect(cb).toHaveBeenCalledWith({ id: 'alice', roles: ['Requester'] })
   })
 })

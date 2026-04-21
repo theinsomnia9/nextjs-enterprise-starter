@@ -1,14 +1,9 @@
 import { z } from 'zod'
 
-const nonEmpty = (name: string) =>
-  z
-    .string({
-      required_error: `${name} is required when LLM_PROVIDER=${name.startsWith('AZURE_') ? 'azure-openai' : 'openai'}`,
-    })
-    .min(
-      1,
-      `${name} is required when LLM_PROVIDER=${name.startsWith('AZURE_') ? 'azure-openai' : 'openai'}`,
-    )
+const nonEmpty = (name: string) => {
+  const msg = `${name} is required when LLM_PROVIDER=${name.startsWith('AZURE_') ? 'azure-openai' : 'openai'}`
+  return z.string({ error: msg }).min(1, msg)
+}
 
 const apiVersionRegex = /^\d{4}-\d{2}-\d{2}(-preview)?$/
 
@@ -23,15 +18,11 @@ const azureSchema = z.object({
   provider: z.literal('azure-openai'),
   apiKey: nonEmpty('AZURE_OPENAI_API_KEY'),
   endpoint: z
-    .string({
-      required_error: 'AZURE_OPENAI_ENDPOINT is required when LLM_PROVIDER=azure-openai',
-    })
+    .string({ error: 'AZURE_OPENAI_ENDPOINT is required when LLM_PROVIDER=azure-openai' })
     .min(1, 'AZURE_OPENAI_ENDPOINT is required when LLM_PROVIDER=azure-openai')
     .url('AZURE_OPENAI_ENDPOINT must be a valid URL'),
   apiVersion: z
-    .string({
-      required_error: 'AZURE_OPENAI_API_VERSION is required when LLM_PROVIDER=azure-openai',
-    })
+    .string({ error: 'AZURE_OPENAI_API_VERSION is required when LLM_PROVIDER=azure-openai' })
     .min(1, 'AZURE_OPENAI_API_VERSION is required when LLM_PROVIDER=azure-openai')
     .regex(
       apiVersionRegex,
@@ -74,12 +65,13 @@ export function parseLlmConfig(): LlmConfig {
   const raw = readRaw()
   const parsed = llmConfigSchema.safeParse(raw)
   if (!parsed.success) {
-    const first = parsed.error.errors[0]
+    const first = parsed.error.issues[0]
     // Zod discriminatedUnion emits a generic message when the discriminator
     // value itself is invalid; surface it as an LLM_PROVIDER error instead.
-    if (first?.code === 'invalid_union_discriminator') {
+    const rawProvider = (raw as Record<string, unknown>).provider
+    if (first?.code === 'invalid_union' && !['openai', 'azure-openai'].includes(String(rawProvider))) {
       throw new Error(
-        `LLM_PROVIDER must be one of: openai, azure-openai (got "${(raw as Record<string, unknown>).provider}")`,
+        `LLM_PROVIDER must be one of: openai, azure-openai (got "${rawProvider}")`,
       )
     }
     throw new Error(first?.message ?? 'Invalid LLM configuration')

@@ -20,7 +20,7 @@ export const chatHandlers = [
     })
   }),
 
-  http.get('/api/chat/:chatId/messages', ({ params }) => {
+  http.get('/api/chat/:chatId/messages', () => {
     return HttpResponse.json({
       messages: [
         {

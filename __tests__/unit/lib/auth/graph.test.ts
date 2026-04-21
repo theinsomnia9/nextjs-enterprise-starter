@@ -5,7 +5,6 @@ const originalFetch = global.fetch
 
 describe('fetchUserPhoto', () => {
   beforeEach(() => {
-    // @ts-expect-error override
     global.fetch = vi.fn()
   })
   afterEach(() => {

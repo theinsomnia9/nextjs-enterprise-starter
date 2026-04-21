@@ -44,7 +44,8 @@ describe('session encode/decode', () => {
     const cookie = await encodeSession(payload)
     process.env.AUTH_SESSION_SECRET = 'deadbeef'.repeat(8)
     // re-import with new secret
-    const fresh = await import('@/lib/auth/session?v=otherkey')
+    const path = '@/lib/auth/session?v=otherkey'
+    const fresh = (await import(/* @vite-ignore */ path)) as typeof import('@/lib/auth/session')
     await expect(fresh.decodeSession(cookie)).rejects.toThrow()
   })
 })

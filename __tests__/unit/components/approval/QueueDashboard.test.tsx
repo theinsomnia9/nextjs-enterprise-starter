@@ -16,8 +16,8 @@ const mockRequests = [
   {
     id: 'req-1',
     title: 'Deploy to production',
-    category: 'P1',
-    status: 'PENDING',
+    category: 'P1' as const,
+    status: 'PENDING' as const,
     priorityScore: 105,
     requester: { id: 'user-1', name: 'Alice', email: 'alice@example.com' },
     assignee: null,
@@ -28,8 +28,8 @@ const mockRequests = [
   {
     id: 'req-2',
     title: 'Update dependencies',
-    category: 'P3',
-    status: 'REVIEWING',
+    category: 'P3' as const,
+    status: 'REVIEWING' as const,
     priorityScore: 52,
     requester: { id: 'user-2', name: 'Bob', email: 'bob@example.com' },
     assignee: { id: 'user-3', name: 'Carol', email: 'carol@example.com' },

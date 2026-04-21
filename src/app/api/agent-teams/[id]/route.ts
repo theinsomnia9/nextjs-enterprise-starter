@@ -17,7 +17,7 @@ export const PUT = withApi<{ id: string }>('agentTeams.update', async (req, { pa
   const actor = await getActor()
   const body = await req.json()
   const parsed = updateTeamSchema.safeParse(body)
-  if (!parsed.success) throw validationError(parsed.error.errors[0].message)
+  if (!parsed.success) throw validationError(parsed.error.issues[0].message)
 
   const team = await agentTeamService.update(id, actor.id, parsed.data)
   return NextResponse.json(team)

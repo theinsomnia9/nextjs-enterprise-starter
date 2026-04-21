@@ -16,8 +16,8 @@ async function seedRequest(overrides: Partial<{ status: string; assigneeId: stri
       status: (overrides.status as never) ?? 'PENDING',
       submittedAt: new Date(),
       requester: { connect: { id: TEST_USER.id } },
-      ...(overrides.assigneeId !== undefined && {
-        assignee: overrides.assigneeId ? { connect: { id: overrides.assigneeId } } : { disconnect: true },
+      ...(overrides.assigneeId && {
+        assignee: { connect: { id: overrides.assigneeId } },
       }),
       lockExpiresAt: overrides.lockExpiresAt ?? null,
     },

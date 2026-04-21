@@ -12,7 +12,7 @@ export const POST = withApi('agentTeams.design', async (req) => {
   await getActor()
   const body = await req.json()
   const parsed = designTeamSchema.safeParse(body)
-  if (!parsed.success) throw validationError(parsed.error.errors[0].message)
+  if (!parsed.success) throw validationError(parsed.error.issues[0].message)
 
   addSpanAttribute('design.message_length', parsed.data.message.length)
 

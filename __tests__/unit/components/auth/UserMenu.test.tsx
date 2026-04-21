@@ -125,7 +125,7 @@ describe('UserMenu', () => {
   it('renders avatar image when photoUrl is a URL', async () => {
     const user = userEvent.setup()
     const photoUrl = 'https://example.com/photo.jpg'
-    const { container } = renderWith({
+    renderWith({
       userId: 'u1',
       roles: ['Requester'],
       name: 'Carol Test',

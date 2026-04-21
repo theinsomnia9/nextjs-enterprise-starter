@@ -37,11 +37,13 @@ describe('auth/config', () => {
 
   it('throws when a required env var is missing', async () => {
     delete process.env.AZURE_AD_CLIENT_ID
-    await expect(import('@/lib/auth/config?v=missing')).rejects.toThrow(/AZURE_AD_CLIENT_ID/)
+    const path = '@/lib/auth/config?v=missing'
+    await expect(import(/* @vite-ignore */ path)).rejects.toThrow(/AZURE_AD_CLIENT_ID/)
   })
 
   it('throws when AUTH_SESSION_SECRET is too short', async () => {
     process.env.AUTH_SESSION_SECRET = 'short'
-    await expect(import('@/lib/auth/config?v=short')).rejects.toThrow(/AUTH_SESSION_SECRET/)
+    const path = '@/lib/auth/config?v=short'
+    await expect(import(/* @vite-ignore */ path)).rejects.toThrow(/AUTH_SESSION_SECRET/)
   })
 })

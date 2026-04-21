@@ -18,6 +18,7 @@ export default defineConfig({
         '.next/',
         'coverage/',
         'infra/',
+        'src/generated/**',
       ],
       thresholds: {
         lines: 80,

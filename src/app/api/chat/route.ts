@@ -14,7 +14,7 @@ const requestSchema = z.object({
 export const POST = withApi('http.chat.create', async (req) => {
   const body = await req.json()
   const parsed = requestSchema.safeParse(body)
-  if (!parsed.success) throw validationError(parsed.error.errors[0].message)
+  if (!parsed.success) throw validationError(parsed.error.issues[0].message)
   const { message, chatId } = parsed.data
 
   addSpanAttribute('chat.message_length', message.length)

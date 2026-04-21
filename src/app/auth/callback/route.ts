@@ -87,7 +87,7 @@ export async function GET(req: NextRequest) {
     try {
       tokenResult = await getMsalClient().acquireTokenByCode({
         code,
-        scopes: authConfig.scopes,
+        scopes: [...authConfig.scopes],
         redirectUri: authConfig.redirectUri,
         codeVerifier: pending.codeVerifier,
       })

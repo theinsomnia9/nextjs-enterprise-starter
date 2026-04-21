@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import Link from 'next/link'
 import ReactFlow, {
   Background,
   BackgroundVariant,
@@ -114,7 +115,6 @@ function BuilderInner({ team }: AgentTeamBuilderProps) {
   useEffect(() => {
     // initial mount should not be dirty
     setDirty(false)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const selectedNode: DomainNode | null = useMemo(() => {
@@ -226,9 +226,9 @@ function BuilderInner({ team }: AgentTeamBuilderProps) {
     <div className="flex h-full w-full flex-col" data-testid="agent-team-builder">
       <header className="flex items-center justify-between gap-2 border-b bg-card px-4 py-2">
         <div className="flex items-center gap-3 min-w-0">
-          <a href="/agent-teams" className="text-xs text-muted-foreground hover:underline">
+          <Link href="/agent-teams" className="text-xs text-muted-foreground hover:underline">
             ← Teams
-          </a>
+          </Link>
           <input
             value={metadata.title}
             onChange={(e) => {

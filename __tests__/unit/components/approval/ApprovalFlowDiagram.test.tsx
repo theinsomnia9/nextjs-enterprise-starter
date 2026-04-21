@@ -82,8 +82,8 @@ vi.mock('@/lib/approvals/yjsClient', () => ({
 const mockRequest = {
   id: 'req-abc',
   title: 'Update Node.js to v22 LTS',
-  category: 'P3',
-  status: 'REVIEWING',
+  category: 'P3' as const,
+  status: 'REVIEWING' as const,
   priorityScore: 50,
   requester: { id: 'user-1', name: 'Bob', email: 'bob@example.com' },
   assignee: { id: 'user-2', name: 'Alice', email: 'alice@example.com' },

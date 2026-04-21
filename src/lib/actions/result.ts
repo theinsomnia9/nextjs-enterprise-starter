@@ -20,7 +20,7 @@ export type ActionResult<T> =
 
 function zodFields(err: ZodError): Record<string, string> {
   const out: Record<string, string> = {}
-  for (const issue of err.errors) {
+  for (const issue of err.issues) {
     const path = issue.path.join('.')
     if (!(path in out)) out[path] = issue.message
   }

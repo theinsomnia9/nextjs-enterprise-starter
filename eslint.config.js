@@ -11,6 +11,7 @@ module.exports = [
       'playwright-report/**',
       'dist/**',
       'build/**',
+      'src/generated/**',
     ],
   },
   {
