@@ -1,9 +1,9 @@
-import { ChatOpenAI } from '@langchain/openai'
 import { createAgent, tool } from 'langchain'
 import { MemorySaver } from '@langchain/langgraph'
 import { evaluate } from 'mathjs'
 import { z } from 'zod'
 import { tavily } from '@tavily/core'
+import { getChatModel } from '@/lib/ai'
 
 export interface AgentConfig {
   model?: string
@@ -29,21 +29,15 @@ export function getAgent(): CompiledAgent {
 }
 
 export function buildAgent(config: AgentConfig = {}): CompiledAgent {
-  const openAIApiKey = process.env.OPENAI_API_KEY
   const tavilyApiKey = process.env.TAVILY_API_KEY
-
-  if (!openAIApiKey) {
-    throw new Error('OPENAI_API_KEY is not configured')
-  }
 
   if (!tavilyApiKey) {
     throw new Error('TAVILY_API_KEY is not configured')
   }
 
-  const model = new ChatOpenAI({
-    model: config.model ?? 'gpt-4o-mini',
+  const model = getChatModel({
+    model: config.model,
     temperature: config.temperature ?? 0.7,
-    apiKey: openAIApiKey,
   })
 
   const tavilyClient = tavily({ apiKey: tavilyApiKey })

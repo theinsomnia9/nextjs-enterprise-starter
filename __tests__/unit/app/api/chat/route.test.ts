@@ -1,10 +1,9 @@
 import { describe, it, expect, vi } from 'vitest'
 import { z } from 'zod'
 
-vi.mock('openai', () => ({
-  default: vi.fn(function () {
-    return { chat: { completions: { create: vi.fn() } } }
-  }),
+vi.mock('@/lib/ai', () => ({
+  getChatClient: vi.fn(() => ({ chat: { completions: { create: vi.fn() } } })),
+  chatModelName: vi.fn(() => 'gpt-4o-mini'),
 }))
 
 vi.mock('@/lib/prisma', () => ({
@@ -57,25 +56,6 @@ describe('POST /api/chat', () => {
     expect(response.status).toBe(400)
     const data = await response.json()
     expect(data.error).toBeDefined()
-  })
-
-  it('returns 500 when OpenAI API key is missing', async () => {
-    const original = process.env.OPENAI_API_KEY
-    delete process.env.OPENAI_API_KEY
-
-    const request = new Request('http://localhost:3000/api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: 'Hello', chatId: null }),
-    })
-
-    const response = await POST(request, { params: Promise.resolve({}) })
-
-    expect(response.status).toBe(500)
-    const data = await response.json()
-    expect(data.error).toBe('OpenAI API key is not configured')
-
-    process.env.OPENAI_API_KEY = original
   })
 
   it('validates request schema correctly', () => {

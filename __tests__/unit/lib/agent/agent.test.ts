@@ -1,17 +1,7 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { buildAgent, AgentConfig } from '@/lib/agent/agent'
 
 describe('buildAgent', () => {
-  let originalEnv: string | undefined
-
-  beforeEach(() => {
-    originalEnv = process.env.OPENAI_API_KEY
-  })
-
-  afterEach(() => {
-    process.env.OPENAI_API_KEY = originalEnv
-  })
-
   it('should return a compiled LangGraph agent', () => {
     process.env.OPENAI_API_KEY = 'sk-test-key'
     process.env.TAVILY_API_KEY = 'tvly-test-key'
@@ -21,13 +11,6 @@ describe('buildAgent', () => {
     expect(agent).toBeDefined()
     expect(agent.invoke).toBeInstanceOf(Function)
     expect(agent.streamEvents).toBeInstanceOf(Function)
-  })
-
-  it('should throw if OPENAI_API_KEY is missing', () => {
-    delete process.env.OPENAI_API_KEY
-    process.env.TAVILY_API_KEY = 'tvly-test-key'
-
-    expect(() => buildAgent()).toThrow('OPENAI_API_KEY is not configured')
   })
 
   it('should throw if TAVILY_API_KEY is missing', () => {

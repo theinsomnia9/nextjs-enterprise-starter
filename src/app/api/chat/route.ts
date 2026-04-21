@@ -1,24 +1,15 @@
-import OpenAI from 'openai'
 import { z } from 'zod'
 import { withApi } from '@/lib/api/withApi'
 import { addSpanAttribute } from '@/lib/telemetry/tracing'
 import { resolveChat, saveAssistantMessage } from '@/lib/chat/helpers'
 import { SSE_HEADERS, SSE_DONE_FRAME } from '@/lib/sse/eventTypes'
 import { notFound, validationError } from '@/lib/errors/AppError'
+import { getChatClient, chatModelName } from '@/lib/ai'
 
 const requestSchema = z.object({
   message: z.string().min(1, 'Message is required'),
   chatId: z.string().nullable(),
 })
-
-let openaiClient: OpenAI | null = null
-
-function getOpenAIClient(): OpenAI {
-  if (!openaiClient) {
-    openaiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
-  }
-  return openaiClient
-}
 
 export const POST = withApi('http.chat.create', async (req) => {
   const body = await req.json()
@@ -29,10 +20,6 @@ export const POST = withApi('http.chat.create', async (req) => {
   addSpanAttribute('chat.message_length', message.length)
   addSpanAttribute('chat.has_existing_id', !!chatId)
 
-  if (!process.env.OPENAI_API_KEY) {
-    throw new Error('OpenAI API key is not configured')
-  }
-
   const chat = await resolveChat(chatId, message)
   if (!chat) throw notFound('Chat', chatId ?? undefined)
 
@@ -41,8 +28,8 @@ export const POST = withApi('http.chat.create', async (req) => {
     content: msg.content,
   }))
 
-  const stream = await getOpenAIClient().chat.completions.create({
-    model: 'gpt-4o-mini',
+  const stream = await getChatClient().chat.completions.create({
+    model: chatModelName(),
     messages,
     stream: true,
   })

@@ -1,10 +1,10 @@
-import { ChatOpenAI } from '@langchain/openai'
 import { HumanMessage, SystemMessage } from '@langchain/core/messages'
 import { createAgent } from 'langchain'
 import type { AgentNodeData, GuardrailNodeData, TeamDefinition, TeamNode } from './types'
 import { topologicalOrder, validateTeamDefinition } from './validator'
 import { buildToolsForAgent } from './tools'
 import { evaluateGuardrail } from './guardrails'
+import { getChatModel } from '@/lib/ai'
 
 export type ExecutorEvent =
   | { type: 'run_started'; teamId: string }
@@ -23,7 +23,6 @@ export interface ExecutorOptions {
   definition: TeamDefinition
   input: string
   signal?: AbortSignal
-  apiKey?: string
 }
 
 interface NodeResult {
@@ -34,12 +33,6 @@ interface NodeResult {
 export async function* executeTeam(
   opts: ExecutorOptions
 ): AsyncGenerator<ExecutorEvent, void, unknown> {
-  const apiKey = opts.apiKey ?? process.env.OPENAI_API_KEY
-  if (!apiKey) {
-    yield { type: 'error', message: 'OPENAI_API_KEY is not configured' }
-    return
-  }
-
   const report = validateTeamDefinition(opts.definition)
   if (!report.ok) {
     yield {
@@ -109,10 +102,8 @@ export async function* executeTeam(
       if (node.type === 'agent') {
         const result = await runAgentNode({
           node,
-          apiKey,
           inputs: combinedContext || opts.input,
           signal: opts.signal,
-          onEvent: () => undefined,
         })
         results.set(id, { nodeId: id, output: result })
         yield { type: 'node_completed', nodeId: id, outputPreview: preview(result) }
@@ -143,18 +134,15 @@ export async function* executeTeam(
 
 async function runAgentNode(args: {
   node: TeamNode
-  apiKey: string
   inputs: string
   signal?: AbortSignal
-  onEvent: (ev: ExecutorEvent) => void
 }): Promise<string> {
   const data = args.node.data as AgentNodeData
   const tools = buildToolsForAgent(data.toolNames).map((t) => t.tool)
 
-  const llm = new ChatOpenAI({
+  const llm = getChatModel({
     model: data.model,
     temperature: data.temperature,
-    apiKey: args.apiKey,
   })
 
   const agent = createAgent({

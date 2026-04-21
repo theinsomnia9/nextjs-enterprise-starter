@@ -32,4 +32,27 @@ module.exports = [
       'react-compiler/react-compiler': 'error',
     },
   },
+  {
+    files: ['src/**/*.{ts,tsx}', '__tests__/**/*.{ts,tsx}'],
+    ignores: ['src/lib/ai/**', '__tests__/unit/lib/ai/**'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: 'openai',
+              message:
+                'Import from "@/lib/ai" instead. Only src/lib/ai/** may import the openai SDK directly.',
+            },
+            {
+              name: '@langchain/openai',
+              message:
+                'Import from "@/lib/ai" instead. Only src/lib/ai/** may import @langchain/openai directly.',
+            },
+          ],
+        },
+      ],
+    },
+  },
 ]
