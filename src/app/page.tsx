@@ -1,5 +1,4 @@
 import Link from 'next/link'
-import ThemeToggle from '@/components/theme/ThemeToggle'
 
 const NAV_ROUTES = [
   {
@@ -29,9 +28,6 @@ const NAV_ROUTES = [
 export default function Home() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-6 md:p-24">
-      <div className="fixed right-4 top-4 z-50">
-        <ThemeToggle />
-      </div>
       <div className="w-full max-w-5xl">
         <div className="mb-10">
           <h1 className="mb-2 text-4xl font-bold tracking-tight">Workspace</h1>
