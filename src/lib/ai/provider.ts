@@ -15,13 +15,10 @@ function config(): LlmConfig {
 }
 
 export function getChatClient(): OpenAI {
-  if (cachedClient) {
-    addSpanAttribute('ai.provider', cachedConfig!.provider)
-    return cachedClient
-  }
-
   const cfg = config()
   addSpanAttribute('ai.provider', cfg.provider)
+
+  if (cachedClient) return cachedClient
 
   if (cfg.provider === 'azure-openai') {
     cachedClient = new AzureOpenAI({
