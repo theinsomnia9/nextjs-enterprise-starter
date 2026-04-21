@@ -91,30 +91,29 @@ No other permissions are required for this app.
 
 ## Step 6 — Define app roles
 
-This app authorizes actions by role claim on the ID token. Create three:
+This app authorizes actions by role claim on the ID token. Create two:
 
 1. Left sidebar → **App roles** → **+ Create app role**.
 2. Create each of the following (the **Value** field must match exactly — the code looks these up literally):
 
 | Display name | Allowed member types | Value | Description |
 |---|---|---|---|
-| Admin | Users/Groups | `Admin` | Full admin access; can edit PriorityConfig. |
-| Approver | Users/Groups | `Approver` | Can lock, approve, and reject approval requests. |
-| Requester | Users/Groups | `Requester` | Can submit approval requests (default). |
+| Admin | Users/Groups | `Admin` | Privileged actions (default admin-only features). |
+| User | Users/Groups | `User` | Standard signed-in user (default for anyone without an explicit role). |
 
 3. Check **Do you want to enable this app role?** on each → **Apply**.
 
-> **Why these exact values?** `src/lib/auth/roles.ts` defines the canonical set. Any other string is filtered out at sign-in with a warn log and the user defaults to `Requester`.
+> **Why these exact values?** `src/lib/auth/roles.ts` defines the canonical set. Any other string is filtered out at sign-in with a warn log and the user defaults to `User`.
 
-## Step 7 — Assign users to roles (optional but recommended)
+## Step 7 — Assign users to roles (optional)
 
-Unassigned users will sign in successfully but land with the default `Requester` role. To test Approver/Admin paths, you must assign yourself.
+Unassigned users will sign in successfully and default to the `User` role — that is the intended experience for most people. To test Admin paths, assign yourself the Admin role.
 
 1. Top-bar search → **Enterprise applications** → find `nextjs-boilerplate-local`.
 2. Left sidebar → **Properties** → set **Assignment required?** to **No** (frictionless onboarding during dev) → **Save**.
 3. Left sidebar → **Users and groups** → **+ Add user/group**.
-4. Pick a user (yourself, or one of the seeded dev-program users) → pick a role (**Approver** or **Admin**) → **Assign**.
-5. Repeat for additional test identities. Each user can only hold one role assignment here; for multiple roles, assign the same user multiple times.
+4. Pick a user (yourself, or one of the seeded dev-program users) → pick the **Admin** role → **Assign**.
+5. Repeat for any other test identities that need Admin.
 
 ## Step 8 — Wire env vars into the app
 
@@ -151,10 +150,9 @@ The `User` table stores `entraOid` (Entra Object ID) as the stable user identifi
 ```bash
 npm run infra:up     # start Postgres if not already running
 npm run db:migrate   # apply Prisma migrations
-npm run db:seed      # seed PriorityConfig rows (safe to re-run)
 ```
 
-The seed does **not** create users — they are provisioned automatically on first Entra sign-in via `prisma.user.upsert({ where: { entraOid } })` in `src/app/auth/callback/route.ts`.
+Users are provisioned automatically on first Entra sign-in via `prisma.user.upsert({ where: { entraOid } })` in `src/app/auth/callback/route.ts`. There is no seed step in the boilerplate — it ships with an empty DB.
 
 ## Step 10 — First sign-in
 
@@ -162,7 +160,7 @@ The seed does **not** create users — they are provisioned automatically on fir
 npm run dev
 ```
 
-1. Open <http://localhost:3000>. Middleware (`src/middleware.ts`) redirects you to `/auth/signin`.
+1. Open <http://localhost:3000>. The Next 16 proxy (`src/proxy.ts`) redirects you to `/auth/signin`.
 2. `/auth/signin` builds the MSAL auth URL (PKCE + state) and 302s you to `login.microsoftonline.com`.
 3. Sign in with an account from your tenant (e.g., `admin@<prefix>.onmicrosoft.com` or a seeded test user).
 4. Consent to **Sign you in and read your profile** on first use.
@@ -172,7 +170,7 @@ Verify the session:
 
 - DevTools → Application → Cookies → `session` cookie is present, `HttpOnly`, `Secure=false` (localhost), `SameSite=Lax`.
 - `User` row exists in the DB (`npm run db:studio` → User table → row with your `entraOid`).
-- Your assigned role appears in UI elements gated by `useSession()`. Requester-only users won't see Approve/Reject buttons; Approvers will.
+- Your assigned role appears in UI elements gated by `useSession()`. Admin-only UI affordances are visible only to users with the `Admin` role.
 
 ## Sign-out (federated)
 
@@ -201,7 +199,7 @@ Clicking **Sign out** in the user menu kicks off a federated (RP-initiated) logo
 | `AADSTS7000215: Invalid client secret` | Secret expired, was regenerated, or copied from the Secret ID field instead of Value | Step 3; create a new secret and update `.env`. |
 | `[auth/config] Missing required env var: …` on `npm run dev` | `.env` not loaded or key missing | Confirm filename is `.env`, not `.env.local`; restart dev server after edits. |
 | `[auth/config] AUTH_SESSION_SECRET must be at least 32 characters` | Secret too short | Regenerate with `openssl rand -base64 32`. |
-| Signed in but stuck with `Requester` when expecting Approver/Admin | No role assignment, or role `Value` typo | Step 7 — confirm the **Value** column matches `Admin`/`Approver`/`Requester` exactly (case-sensitive). |
+| Signed in but stuck with `User` when expecting `Admin` | No role assignment, or role `Value` typo | Step 7 — confirm the **Value** column matches `Admin`/`User` exactly (case-sensitive). |
 | `302 /auth/signin?error=state_mismatch` in a loop | Browser blocking cookies, or `APP_URL` scheme/host doesn't match the browser URL | Confirm you visit the same host/port as `APP_URL`; third-party cookies must be allowed for localhost. |
 | Sign-in works but `/auth/callback` returns `?reason=provisioning` | Database unreachable, or migration not run | `npm run infra:up` and `npm run db:migrate`. |
 | `AADSTS65001: user has not consented` | Admin consent was not granted for `User.Read` | Step 5 — re-click **Grant admin consent**. |

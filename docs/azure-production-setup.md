@@ -19,7 +19,7 @@ Hand this to whoever is tracking the rollout:
   - [ ] `https://<prod-host>/auth/callback` — OAuth callback
   - [ ] `https://<prod-host>/auth/signin` — `post_logout_redirect_uri` target (see §3.1)
 - [ ] Client secret (or certificate) issued; expiry recorded in rotation calendar
-- [ ] App roles defined with **exact** values `Admin`, `Approver`, `Requester`
+- [ ] App roles defined with **exact** values `Admin`, `User`
 - [ ] Enterprise app created; **Assignment required** decision made (see §3.6)
 - [ ] Admin consent granted for `User.Read` (Microsoft Graph, Delegated)
 - [ ] Initial role assignments made to break-glass admins
@@ -154,13 +154,12 @@ Click **Grant admin consent for <tenant>** → **Yes**. Status column must show 
 
 ### 3.6 App roles (authorization surface)
 
-App registration → **App roles** → **+ Create app role**. Create all three. **The `Value` field is case-sensitive and must match exactly** — the code in `src/lib/auth/roles.ts` compares as literal strings, and unknown values get silently filtered to `Requester` with a warn log.
+App registration → **App roles** → **+ Create app role**. Create both. **The `Value` field is case-sensitive and must match exactly** — the code in `src/lib/auth/roles.ts` compares as literal strings, and unknown values get silently filtered to `User` with a warn log.
 
 | Display name | Allowed member types | Value | Description |
 |---|---|---|---|
-| Admin | Users/Groups | `Admin` | Full admin; can edit PriorityConfig. |
-| Approver | Users/Groups | `Approver` | Can lock/approve/reject approval requests. |
-| Requester | Users/Groups | `Requester` | Can submit requests. Default if no assignment. |
+| Admin | Users/Groups | `Admin` | Privileged actions; gate admin-only features on this role. |
+| User | Users/Groups | `User` | Standard signed-in user. Default if no explicit assignment. |
 
 Each must have **Do you want to enable this app role?** checked.
 
@@ -174,7 +173,7 @@ Creating the app registration auto-provisions a matching **Enterprise applicatio
 
 - **Assignment required?** — policy decision:
   - **Yes** → only users/groups explicitly assigned can sign in. Unauthorized tenant members get `AADSTS50105`. Prefer this for internal tools with a clear user list.
-  - **No** → any tenant member can sign in and lands as `Requester` by default. Lower friction, higher blast radius. The design spec calls out this as "frictionless onboarding" for the dev build; for prod, flip it based on your org's policy.
+  - **No** → any tenant member can sign in and lands as `User` by default. Lower friction, higher blast radius. Acceptable for internal dev/staging; flip to **Yes** for prod based on your org's policy.
 - **Visible to users?** — **Yes** only if you want it in the user's My Apps portal. Typically **No** for internal tools launched via a deep link.
 
 **Users and groups:**
@@ -622,7 +621,7 @@ Run through this after the first prod deploy, with a notebook open:
 
 1. `curl -I https://<prod-host>/` → expect `302 Location: /auth/signin?returnTo=/`.
 2. Click through `/auth/signin`. Verify redirect to `login.microsoftonline.com/<tenant>/oauth2/v2.0/authorize?...`.
-3. Sign in as each break-glass user (one Admin, one Approver, one Requester).
+3. Sign in as each break-glass user (one Admin, one plain User).
 4. After redirect back, DevTools → Application → Cookies → `session` cookie present with `HttpOnly: true`, `Secure: true`, `SameSite: Lax`, `Path: /`.
 5. Hit any protected route → loads (no redirect loop).
 6. **Federated sign-out end-to-end.** From any protected page, click **Sign out** (or `curl -I -b session=<cookie> https://<prod-host>/auth/signout`). Expect a 302 chain:
