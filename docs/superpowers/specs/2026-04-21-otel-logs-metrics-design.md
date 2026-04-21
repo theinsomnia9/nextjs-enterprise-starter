@@ -53,7 +53,7 @@ Three invariants:
 export function buildResource(): Resource
 ```
 
-Reads `OTEL_SERVICE_NAME` (fallback `'nextjs-boiler-plate'`), `npm_package_version`, `NODE_ENV`. Returns a `Resource` with `service.name`, `service.version`, `deployment.environment`.
+Reads `OTEL_SERVICE_NAME` (fallback `'nextjs-boilerplate'`, matching the existing `.env.example` and collector resource-processor value), `OTEL_SERVICE_VERSION` (fallback `'0.1.0'`), `NODE_ENV` (fallback `'development'`). Returns a `Resource` with `service.name`, `service.version`, `deployment.environment`.
 
 #### `metrics.ts`
 
@@ -185,17 +185,19 @@ Add Jaeger and Loki as datasources. The Loki entry defines a derived field that 
 
 New minimal dashboard, four panels:
 
-1. `sum by (result) (rate(agent_team_save_total[5m]))` — stacked area, save rate by result.
-2. `histogram_quantile(0.50|0.95|0.99, sum by (le) (rate(agent_team_save_duration_bucket[5m])))` — three lines, p50/p95/p99 save latency.
-3. `sum by (event_type) (rate(agent_team_run_events_total[5m]))` — stacked area, run event rate.
-4. Loki logs panel, query `{service_name="nextjs-boiler-plate"} |= "agent_team"`, TraceID derived field visible on rows.
+Note: the collector's `prometheus` exporter uses `namespace: nextjs`, so OTel metric names are prefixed with `nextjs_` and dots become underscores in PromQL.
+
+1. `sum by (result) (rate(nextjs_agent_team_save_total[5m]))` — stacked area, save rate by result.
+2. `histogram_quantile(0.50|0.95|0.99, sum by (le) (rate(nextjs_agent_team_save_duration_milliseconds_bucket[5m])))` — three lines, p50/p95/p99 save latency.
+3. `sum by (event_type) (rate(nextjs_agent_team_run_events_total[5m]))` — stacked area, run event rate.
+4. Loki logs panel, query `{service_name="nextjs-boilerplate"} |= "agent_team"`, TraceID derived field visible on rows.
 
 ### Environment
 
 Add to `.env.example`:
 
 - `OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318` (documented; already read by SDK)
-- `OTEL_SERVICE_NAME=nextjs-boiler-plate` (documented; read by `resource.ts`)
+- `OTEL_SERVICE_NAME=nextjs-boilerplate` (already present in `.env.example`; read by `resource.ts`)
 - `LOG_LEVEL=info` (new; read by `logger.ts` for stdout filtering)
 
 ## Team-builder instrumentation
