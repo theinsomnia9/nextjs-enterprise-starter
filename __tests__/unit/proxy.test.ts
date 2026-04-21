@@ -67,6 +67,25 @@ describe('proxy', () => {
     expect(res.headers.get('location')).toContain('/auth/signin')
   })
 
+  it('returns 401 JSON for /api/* without a session (instead of redirect)', async () => {
+    const { proxy } = await import('@/proxy')
+    const res = await proxy(mkRequest('/api/me'))
+    expect(res.status).toBe(401)
+    expect(res.headers.get('content-type') ?? '').toContain('application/json')
+    const body = await res.json()
+    expect(body.code).toBe('UNAUTHORIZED')
+    expect(body.reason).toBe('missing')
+  })
+
+  it('returns 401 JSON for /api/* with a tampered cookie', async () => {
+    const cookie = `session=not-a-valid-jwe`
+    const { proxy } = await import('@/proxy')
+    const res = await proxy(mkRequest('/api/me', cookie))
+    expect(res.status).toBe(401)
+    const body = await res.json()
+    expect(body.reason).toBe('invalid_session')
+  })
+
   it('strips a client-supplied x-auth-session header on public paths', async () => {
     const req = mkRequest('/auth/signin')
     req.headers.set('x-auth-session', '{"userId":"forged","roles":["Admin"]}')

@@ -18,12 +18,23 @@ function isPublicPath(pathname: string): boolean {
     pathname === '/auth/signin/' // trailing-slash tolerance
 }
 
+function isApiPath(pathname: string): boolean {
+  return pathname.startsWith('/api/')
+}
+
 function redirectToSignin(req: NextRequest, extra: Record<string, string> = {}): NextResponse {
   const url = new URL('/auth/signin', req.nextUrl.origin)
   const returnTo = req.nextUrl.pathname + req.nextUrl.search
   if (returnTo && returnTo !== '/') url.searchParams.set('returnTo', returnTo)
   for (const [k, v] of Object.entries(extra)) url.searchParams.set(k, v)
   return NextResponse.redirect(url, { status: 307 })
+}
+
+function unauthorizedJson(reason: 'missing' | 'invalid_session'): NextResponse {
+  return NextResponse.json(
+    { error: 'Sign in required', code: 'UNAUTHORIZED', reason },
+    { status: 401 }
+  )
 }
 
 // Build forward headers with any client-supplied SESSION_HEADER overridden.
@@ -45,7 +56,9 @@ export async function proxy(req: NextRequest): Promise<NextResponse> {
   }
 
   const cookie = req.cookies.get(authConfig.sessionCookieName)?.value
-  if (!cookie) return redirectToSignin(req)
+  if (!cookie) {
+    return isApiPath(pathname) ? unauthorizedJson('missing') : redirectToSignin(req)
+  }
 
   try {
     const session = await decodeSession(cookie)
@@ -54,6 +67,8 @@ export async function proxy(req: NextRequest): Promise<NextResponse> {
     forwardHeaders.set(SESSION_HEADER, JSON.stringify(session))
     return NextResponse.next({ request: { headers: forwardHeaders } })
   } catch {
-    return redirectToSignin(req, { error: 'invalid_session' })
+    return isApiPath(pathname)
+      ? unauthorizedJson('invalid_session')
+      : redirectToSignin(req, { error: 'invalid_session' })
   }
 }
