@@ -24,9 +24,9 @@ async function addAuthCookie(context: BrowserContext) {
 }
 
 test.describe('UserMenu', () => {
-  test('avatar visible on /, /chat, /approvals, /agent-teams', async ({ context, page }) => {
+  test('avatar visible on /dashboard and /settings', async ({ context, page }) => {
     await addAuthCookie(context)
-    const routes = ['/', '/chat', '/approvals', '/agent-teams']
+    const routes = ['/dashboard', '/settings']
     for (const route of routes) {
       await page.goto(`${BASE}${route}`)
       await expect(
@@ -55,9 +55,9 @@ test.describe('UserMenu', () => {
     const isSignedOut =
       finalUrl.includes('login.microsoftonline.com') || finalUrl.includes('/auth/signin')
     expect(isSignedOut).toBe(true)
-    // Subsequent visit to /approvals (cookie cleared) should also redirect
-    await page.goto(`${BASE}/approvals`)
-    await expect(page).not.toHaveURL(`${BASE}/approvals`)
+    // Subsequent visit to /dashboard (cookie cleared) should also redirect
+    await page.goto(`${BASE}/dashboard`)
+    await expect(page).not.toHaveURL(`${BASE}/dashboard`)
   })
 
   test('theme toggle changes the html dark class without closing the menu', async ({

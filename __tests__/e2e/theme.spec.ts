@@ -66,7 +66,7 @@ test.describe('Theme Toggle', () => {
     await expect(html).toHaveClass(/dark/)
   })
 
-  test('should work on /builder page', async ({ context, page }) => {
+  test('should persist theme across navigation to /dashboard', async ({ context, page }) => {
     await addAuthCookie(context)
     await page.goto(`${BASE}/`)
 
@@ -74,8 +74,8 @@ test.describe('Theme Toggle', () => {
     const themeItem = await openThemeItem(page)
     await themeItem.click()
 
-    // Navigate to /builder and verify dark mode persisted + UserMenu present
-    await page.goto(`${BASE}/builder`)
+    // Navigate to /dashboard and verify dark mode persisted + UserMenu present
+    await page.goto(`${BASE}/dashboard`)
     const html = page.locator('html')
     await expect(html).toHaveClass(/dark/)
     await expect(page.locator('button[aria-label="Open user menu"]')).toBeVisible()

@@ -7,18 +7,16 @@ test.describe('auth', () => {
   test('unauthenticated user is redirected to /auth/signin', async ({ page }) => {
     // /auth/signin is a pure redirect to Entra — the middleware redirects unauthenticated
     // requests to /auth/signin which then immediately redirects to login.microsoftonline.com.
-    // We verify the chain: /approvals → /auth/signin → Entra (returnTo is preserved in state).
-    await page.goto(`${BASE}/approvals`)
-    // The page should NOT remain on /approvals and should end up off-site (Entra) or on /auth/signin
-    await expect(page).not.toHaveURL(`${BASE}/approvals`)
-    // After following all redirects the URL should either be the Entra login page or /auth/signin
+    // We verify the chain: /dashboard → /auth/signin → Entra (returnTo is preserved in state).
+    await page.goto(`${BASE}/dashboard`)
+    await expect(page).not.toHaveURL(`${BASE}/dashboard`)
     const finalUrl = page.url()
     const isEntraOrSignin =
       finalUrl.includes('login.microsoftonline.com') || finalUrl.includes('/auth/signin')
     expect(isEntraOrSignin).toBe(true)
   })
 
-  test('authenticated user sees approvals page', async ({ context, page }) => {
+  test('authenticated user reaches the dashboard', async ({ context, page }) => {
     const cookie = await buildSessionCookie({
       userId: 'dev-user-alice',
       roles: ['User'],
@@ -35,8 +33,8 @@ test.describe('auth', () => {
         sameSite: 'Lax',
       },
     ])
-    await page.goto(`${BASE}/approvals`)
-    await expect(page.getByRole('heading', { name: /approval queue/i }).first()).toBeVisible()
+    await page.goto(`${BASE}/dashboard`)
+    await expect(page.getByRole('heading', { level: 1 })).toContainText(/welcome/i)
   })
 
   test('sign-out clears session and redirects to signin', async ({ context, page }) => {
@@ -56,15 +54,13 @@ test.describe('auth', () => {
       },
     ])
     await page.goto(`${BASE}/auth/signout`)
-    // /auth/signout clears the cookie then redirects to /auth/signin, which immediately
-    // redirects to Entra. Accept either /auth/signin or the Entra URL.
     const afterSignoutUrl = page.url()
     const redirectedAfterSignout =
       afterSignoutUrl.includes('login.microsoftonline.com') ||
       afterSignoutUrl.includes('/auth/signin')
     expect(redirectedAfterSignout).toBe(true)
-    // Subsequent visit to /approvals (without session cookie) should also redirect
-    await page.goto(`${BASE}/approvals`)
-    await expect(page).not.toHaveURL(`${BASE}/approvals`)
+    // Subsequent visit to /dashboard (without session cookie) should also redirect
+    await page.goto(`${BASE}/dashboard`)
+    await expect(page).not.toHaveURL(`${BASE}/dashboard`)
   })
 })

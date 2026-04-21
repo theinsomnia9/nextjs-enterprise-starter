@@ -1,5 +1,6 @@
 import { encodeSession } from '@/lib/auth/session'
 import type { Role } from '@/lib/auth/roles'
+import type { BrowserContext } from '@playwright/test'
 
 export async function buildSessionCookie(args: {
   userId: string
@@ -28,4 +29,33 @@ export async function buildSessionCookie(args: {
   } finally {
     if (args.secret) process.env.AUTH_SESSION_SECRET = prevSecret
   }
+}
+
+export async function mockSessionAs(
+  context: BrowserContext,
+  args: {
+    role: Role
+    userId?: string
+    name?: string | null
+    email?: string | null
+  }
+): Promise<void> {
+  const userId = args.userId ?? `dev-user-${args.role.toLowerCase()}`
+  const cookie = await buildSessionCookie({
+    userId,
+    roles: [args.role],
+    name: args.name ?? args.role,
+    email: args.email ?? `${userId}@example.com`,
+  })
+  await context.addCookies([
+    {
+      name: 'session',
+      value: encodeURIComponent(cookie),
+      domain: 'localhost',
+      path: '/',
+      httpOnly: true,
+      secure: false,
+      sameSite: 'Lax',
+    },
+  ])
 }

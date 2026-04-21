@@ -1,8 +1,17 @@
+import { redirect } from 'next/navigation'
 import { requireRole } from '@/lib/auth/requireRole'
 import { Role } from '@/lib/auth/roles'
+import { AppError, ErrorCode } from '@/lib/errors/AppError'
 
 export default async function AdminSettings() {
-  await requireRole(Role.Admin)
+  try {
+    await requireRole(Role.Admin)
+  } catch (err) {
+    if (err instanceof AppError && err.code === ErrorCode.FORBIDDEN) {
+      redirect('/auth/unauthorized?reason=forbidden')
+    }
+    throw err
+  }
 
   return (
     <div className="space-y-6">
