@@ -103,19 +103,17 @@ export default function UserMenu() {
             <span>{theme === 'light' ? 'Dark mode' : 'Light mode'}</span>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <form method="POST" action="/auth/signout">
-            <DropdownMenuItem asChild>
-              <button
-                type="submit"
-                data-testid="user-menu-signout"
-                className="flex w-full cursor-default items-center gap-2 text-destructive focus:bg-destructive/10 focus:text-destructive"
-              >
-                <LogOut className="h-4 w-4" aria-hidden="true" />
-                <span>Sign out</span>
-                <span className="sr-only">, {displayName}</span>
-              </button>
-            </DropdownMenuItem>
-          </form>
+          <DropdownMenuItem
+            asChild
+            data-testid="user-menu-signout"
+            className="gap-2 text-destructive focus:bg-destructive/10 focus:text-destructive"
+          >
+            <a href="/auth/signout">
+              <LogOut className="h-4 w-4" aria-hidden="true" />
+              <span>Sign out</span>
+              <span className="sr-only">, {displayName}</span>
+            </a>
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
     </div>

@@ -67,7 +67,7 @@ describe('UserMenu', () => {
     expect(trigger.textContent).toContain('AE')
   })
 
-  it('opens the dropdown with name, email, role badge and sign-out form', async () => {
+  it('opens the dropdown with name, email, role badge and sign-out link', async () => {
     const user = userEvent.setup()
     renderWith({
       userId: 'u1',
@@ -83,11 +83,9 @@ describe('UserMenu', () => {
     expect(screen.getByText('alice@example.com')).toBeDefined()
     expect(screen.getByLabelText('Role: Admin')).toBeDefined()
 
-    const signOutItem = screen.getByText('Sign out')
-    const form = signOutItem.closest('form')
-    expect(form).not.toBeNull()
-    expect(form?.getAttribute('action')).toBe('/auth/signout')
-    expect(form?.getAttribute('method')?.toLowerCase()).toBe('post')
+    const signOutItem = screen.getByTestId('user-menu-signout')
+    expect(signOutItem.tagName).toBe('A')
+    expect(signOutItem.getAttribute('href')).toBe('/auth/signout')
   })
 
   it('theme item toggles dark class without closing the menu', async () => {
@@ -202,5 +200,22 @@ describe('UserMenu', () => {
     const badge = screen.getByLabelText('Role: Requester')
     expect(badge.classList.contains('bg-muted')).toBe(true)
     expect(badge.classList.contains('text-muted-foreground')).toBe(true)
+  })
+
+  it('sign out item is a link to /auth/signout', async () => {
+    const user = userEvent.setup()
+    renderWith({
+      userId: 'u1',
+      roles: ['Approver'],
+      name: 'Alice Example',
+      email: 'alice@example.com',
+      photoUrl: null,
+    })
+
+    await user.click(screen.getByRole('button', { name: /open user menu/i }))
+
+    const signOutItem = screen.getByTestId('user-menu-signout')
+    expect(signOutItem.tagName).toBe('A')
+    expect(signOutItem.getAttribute('href')).toBe('/auth/signout')
   })
 })
