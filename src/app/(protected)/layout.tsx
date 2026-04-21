@@ -8,5 +8,6 @@ export default async function ProtectedLayout({
 }) {
   const session = await getSessionForClient()
   if (!session) redirect('/auth/signin')
-  return <>{children}</>
+
+  return <div className="mx-auto max-w-5xl px-4 pb-16 pt-20">{children}</div>
 }
