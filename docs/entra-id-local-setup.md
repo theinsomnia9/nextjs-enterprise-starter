@@ -59,13 +59,25 @@ On the app's **Overview** page, copy these three values — they become env vars
 3. Click **Add**. Immediately copy the **Value** column (not the Secret ID) — it's only visible once.
 4. Save as `AZURE_AD_CLIENT_SECRET`.
 
-## Step 4 — Configure the redirect URI & token settings
+## Step 4 — Configure the redirect URIs & token settings
 
 1. Left sidebar → **Authentication**.
-2. Confirm `http://localhost:3000/auth/callback` is listed under **Web** → **Redirect URIs**. Add more if you run on a non-default port (e.g., `http://localhost:4000/auth/callback`).
-3. Under **Implicit grant and hybrid flows**: leave **both boxes unchecked** (we use PKCE, not implicit flow).
-4. Under **Advanced settings** → **Allow public client flows**: **No**.
-5. Click **Save**.
+2. Confirm `http://localhost:3000/auth/callback` is listed under **Web** → **Redirect URIs**.
+3. **Add a second redirect URI: `http://localhost:3000/auth/signin`.** This is the `post_logout_redirect_uri` target for federated sign-out — see the "Sign-out" section below. Without it, clicking **Sign out** strands you on Microsoft's generic "You signed out" page.
+4. Add more if you run on a non-default port (e.g., `http://localhost:4000/auth/callback` **and** `http://localhost:4000/auth/signin`).
+5. Under **Implicit grant and hybrid flows**: leave **both boxes unchecked** (we use PKCE, not implicit flow).
+6. Under **Advanced settings** → **Allow public client flows**: **No**.
+7. Click **Save**.
+
+**CLI equivalent** (`az` overwrites the list, so always pass all URIs you want kept):
+
+```bash
+az ad app update \
+  --id <AZURE_AD_CLIENT_ID> \
+  --web-redirect-uris \
+    "http://localhost:3000/auth/callback" \
+    "http://localhost:3000/auth/signin"
+```
 
 ## Step 5 — Grant API permissions
 
@@ -162,6 +174,24 @@ Verify the session:
 - `User` row exists in the DB (`npm run db:studio` → User table → row with your `entraOid`).
 - Your assigned role appears in UI elements gated by `useSession()`. Requester-only users won't see Approve/Reject buttons; Approvers will.
 
+## Sign-out (federated)
+
+Clicking **Sign out** in the user menu kicks off a federated (RP-initiated) logout against Entra. Understanding the flow helps when it looks broken:
+
+1. Browser navigates to `GET /auth/signout` (`src/app/auth/signout/route.ts`).
+2. The route clears the encrypted `session` cookie, sets a short-lived `post_logout` marker cookie (scoped to `/auth/signin`, 5-minute TTL), and 302s to Entra's end-session endpoint:
+   ```
+   https://login.microsoftonline.com/<tenant>/oauth2/v2.0/logout
+     ?post_logout_redirect_uri=http://localhost:3000/auth/signin
+     &client_id=<AZURE_AD_CLIENT_ID>
+   ```
+3. Entra tears down the tenant session. You may briefly see an account picker if the browser has multiple Microsoft identities — this is Microsoft's UI.
+4. Entra redirects back to `/auth/signin` (the `post_logout_redirect_uri`).
+5. `/auth/signin` sees the `post_logout` cookie, adds `prompt=login` to the MSAL authorize request, and clears the cookie. **This forces re-prompting for credentials** — without it, Entra's top-level SSO cookie (`ESTSAUTH`) can silently re-issue a code and it will look like sign-out didn't work (you bounce right back in).
+6. You land on Microsoft's sign-in form. Entering credentials mints a fresh session cookie.
+
+**Files to look at when debugging:** `src/app/auth/signout/route.ts`, `src/app/auth/signin/route.ts`, `src/lib/auth/cookies.ts` (search for `POST_LOGOUT_COOKIE`).
+
 ## Troubleshooting
 
 | Symptom | Likely cause | Fix |
@@ -175,6 +205,9 @@ Verify the session:
 | `302 /auth/signin?error=state_mismatch` in a loop | Browser blocking cookies, or `APP_URL` scheme/host doesn't match the browser URL | Confirm you visit the same host/port as `APP_URL`; third-party cookies must be allowed for localhost. |
 | Sign-in works but `/auth/callback` returns `?reason=provisioning` | Database unreachable, or migration not run | `npm run infra:up` and `npm run db:migrate`. |
 | `AADSTS65001: user has not consented` | Admin consent was not granted for `User.Read` | Step 5 — re-click **Grant admin consent**. |
+| Sign-out leaves user stranded on Microsoft's "You signed out" page | `http://localhost:3000/auth/signin` is not registered as a redirect URI | Step 4 — add the second URI and save (or use the `az ad app update` CLI one-liner). |
+| Sign-out "works" but browser silently signs you back in (no credential prompt) | `prompt=login` is missing from the next authorize request; the `post_logout` cookie is not being read by `/auth/signin` | Confirm `/auth/signin?...` URL chain contains `&prompt=login` after logout. If not, check `SameSite=Lax` support on your browser and that `/auth/signout` set the `post_logout` cookie — see "Sign-out (federated)" above. |
+| `AADSTS900144: post_logout_redirect_uri must match …` during sign-out | Same as above — second URI not registered, or ports don't match | Step 4 — URI must match `${APP_URL}/auth/signin` byte-for-byte. |
 
 ## Adding more contributors
 

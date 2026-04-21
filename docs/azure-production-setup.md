@@ -15,13 +15,17 @@ Estimated time: 45–90 minutes the first environment, ~20 minutes for each subs
 Hand this to whoever is tracking the rollout:
 
 - [ ] Entra ID app registration created (prod)
-- [ ] Redirect URI registered: `https://<prod-host>/auth/callback` (HTTPS only)
+- [ ] Redirect URIs registered (both, HTTPS only):
+  - [ ] `https://<prod-host>/auth/callback` — OAuth callback
+  - [ ] `https://<prod-host>/auth/signin` — `post_logout_redirect_uri` target (see §3.1)
 - [ ] Client secret (or certificate) issued; expiry recorded in rotation calendar
 - [ ] App roles defined with **exact** values `Admin`, `Approver`, `Requester`
 - [ ] Enterprise app created; **Assignment required** decision made (see §3.6)
 - [ ] Admin consent granted for `User.Read` (Microsoft Graph, Delegated)
 - [ ] Initial role assignments made to break-glass admins
 - [ ] Key Vault provisioned in same region as compute
+- [ ] Key Vault network access decided (public + firewall, selected networks, or Private Endpoint — see §4.5)
+- [ ] Key Vault diagnostic logging shipped to Log Analytics (see §4.6)
 - [ ] Secrets loaded into Key Vault (see §4.2 table)
 - [ ] Compute identity (Managed Identity preferred) granted **Key Vault Secrets User** on the vault
 - [ ] App settings / env vars wired to Key Vault references (see §5)
@@ -30,7 +34,7 @@ Hand this to whoever is tracking the rollout:
 - [ ] Prisma `migrate deploy` executed against prod DB (not `migrate dev`)
 - [ ] Conditional Access policies reviewed (MFA, device compliance)
 - [ ] Diagnostic logs / OTEL endpoint reachable from compute
-- [ ] Post-deploy smoke test: sign in end-to-end as a test user of each role
+- [ ] Post-deploy smoke test: sign in end-to-end as a test user of each role, then federated sign-out
 - [ ] Secret rotation runbook scheduled (calendar / PagerDuty / ITSM)
 
 ---
@@ -61,12 +65,22 @@ Azure Portal → **Microsoft Entra ID** → **App registrations** → **+ New re
 |---|---|
 | **Name** | `<app-name>-prod` (e.g., `nextjs-boilerplate-prod`). Use a different name per environment — sharing registrations across envs blurs redirect URIs and secrets. |
 | **Supported account types** | **Accounts in this organizational directory only (Single tenant)**. The code assumes single-tenant authority (`https://login.microsoftonline.com/${tenantId}`). Multi-tenant is an explicit non-goal in the design spec. |
-| **Redirect URI** | Platform **Web**, value `https://<prod-host>/auth/callback`. HTTPS is non-negotiable in prod — `src/lib/auth/cookies.ts` toggles cookie `Secure=true` based on `APP_URL.startsWith('https://')`. Non-HTTPS URLs will ship session cookies over plaintext. |
+| **Redirect URI** | Platform **Web**, value `https://<prod-host>/auth/callback`. HTTPS is non-negotiable in prod — `src/lib/auth/cookies.ts` toggles cookie `Secure=true` based on `APP_URL.startsWith('https://')`. Non-HTTPS URLs will ship session cookies over plaintext. **Add a second redirect URI: `https://<prod-host>/auth/signin`** — this is the `post_logout_redirect_uri` target for federated sign-out (§3.3). Entra validates the post-logout URI against the registered list; omit it and Microsoft strands users on its own generic "you signed out" page. |
 
 Click **Register**. Capture from the **Overview** page:
 
 - **Application (client) ID** → destined for env `AZURE_AD_CLIENT_ID`
 - **Directory (tenant) ID** → destined for env `AZURE_AD_TENANT_ID`
+
+**CLI equivalent** (both URIs in one call — az overwrites the list, so always pass all URIs you intend to keep):
+
+```bash
+az ad app update \
+  --id <AZURE_AD_CLIENT_ID> \
+  --web-redirect-uris \
+    "https://<prod-host>/auth/callback" \
+    "https://<prod-host>/auth/signin"
+```
 
 ### 3.2 Client secret OR certificate (pick one)
 
@@ -89,13 +103,36 @@ Click **Register**. Capture from the **Overview** page:
 
 App registration → **Authentication**.
 
-- **Redirect URIs (Web)**: confirm `https://<prod-host>/auth/callback`. Add staging origins to a **separate** staging registration — do not share.
-- **Front-channel logout URL**: leave blank. The app does local sign-out only; federated logout is an explicit non-goal.
+- **Redirect URIs (Web)**: confirm **both** URIs are present:
+  - `https://<prod-host>/auth/callback` — OAuth2 authorization-code callback.
+  - `https://<prod-host>/auth/signin` — `post_logout_redirect_uri` for federated sign-out. The `/auth/signout` route redirects to Entra's end-session endpoint with this URI; Entra validates it against this list before redirecting back. If it's missing, the user lands on Microsoft's generic "signed out" page with no return path.
+  - Add staging origins to a **separate** staging registration — do not share.
+- **Front-channel logout URL**: leave blank. This is for SAML-style IdP-initiated logout in federation scenarios, which the app does not use. Our sign-out is RP-initiated via the OIDC end-session endpoint (see §3.3.1 below) — not related to this field.
 - **Implicit grant and hybrid flows**: both checkboxes **unchecked**. The code uses Authorization Code + PKCE (`src/app/auth/signin/route.ts`), not implicit.
 - **Advanced settings → Allow public client flows**: **No**. This is a confidential client.
 - **Advanced settings → Supported account types**: leave at single tenant (set at registration time).
 
 Save.
+
+#### 3.3.1 Federated sign-out flow (reference)
+
+When a user clicks **Sign out** in the app, the following happens. Keep this in the team's mental model when debugging auth issues:
+
+1. Browser navigates to `GET /auth/signout` (our route).
+2. Route clears the encrypted app session cookie **and** sets a short-lived `post_logout` flag cookie (scoped to `/auth/signin`, 5 min TTL), then 302s to:
+   ```
+   https://login.microsoftonline.com/<tenant>/oauth2/v2.0/logout
+     ?post_logout_redirect_uri=https://<prod-host>/auth/signin
+     &client_id=<AZURE_AD_CLIENT_ID>
+   ```
+3. Entra tears down the tenant session and (for accounts linked to multiple tenants) may show an account picker — this is Microsoft's UI, not the app's.
+4. Entra redirects the browser to `https://<prod-host>/auth/signin` (the `post_logout_redirect_uri`).
+5. `/auth/signin` sees the `post_logout` cookie, adds `prompt=login` to the MSAL authorize request, and clears the cookie. This forces Entra to re-prompt for credentials on the next sign-in — **without it, Entra's top-level SSO cookie can silently re-issue a code, making sign-out appear to fail** (user bounces back still signed in).
+6. User lands on the Microsoft sign-in form. If they sign back in, a fresh session cookie is minted.
+
+**Implementation files:** `src/app/auth/signout/route.ts`, `src/app/auth/signin/route.ts`, `src/lib/auth/cookies.ts` (look for `POST_LOGOUT_COOKIE`).
+
+**Testing this in prod smoke:** see §9 step 6. The federated logout is observable as a 302 chain ending at `login.microsoftonline.com/.../oauth2/v2.0/logout`, followed by the user re-hitting `/auth/signin` and being forced to authenticate (Microsoft UI visible).
 
 ### 3.4 Token configuration (optional — recommended)
 
@@ -248,6 +285,136 @@ Rules:
 | `cron-secret` | Every 12 months | `openssl rand -hex 32` → Key Vault → update whatever invokes the cron endpoints with the new value → compute reload |
 
 Document rotation dates in a shared calendar. Entra does **not** proactively warn before a secret expires — it just starts returning `AADSTS7000215: Invalid client secret` at 00:00 UTC on expiry day, and the app goes cold.
+
+### 4.5 Networking
+
+Default `az keyvault create` opens the data plane to the public internet and relies on RBAC + TLS for protection. That is **acceptable** but not ideal for prod. Pick one of three postures and stick with it across environments.
+
+**Option A — Public access + selected networks (minimum acceptable).** Vault has a public FQDN but a firewall allow-list.
+
+```bash
+az keyvault network-rule add \
+  --name kv-<app>-<env>-<region-short> \
+  --ip-address <compute-egress-ip>/32
+
+az keyvault update \
+  --name kv-<app>-<env>-<region-short> \
+  --default-action Deny \
+  --bypass AzureServices
+```
+
+- `--default-action Deny` is the key step; without it the firewall rules are advisory only.
+- `--bypass AzureServices` permits trusted Azure services (e.g., Key Vault references from App Service in the same tenant) when they present a verified Managed Identity. Required if you're using `@Microsoft.KeyVault(…)` references from App Service — remove it only if you can prove every caller is inside your VNet.
+- Works only if compute egress IPs are stable. App Service Basic/Standard share a small NAT pool that can change on scale events; prefer Option B for those.
+
+**Option B — VNet + Service Endpoint.** Compute lives in a subnet; that subnet is added to the vault's firewall.
+
+```bash
+az keyvault network-rule add \
+  --name kv-<app>-<env>-<region-short> \
+  --vnet-name vnet-<app>-<env> \
+  --subnet snet-compute
+
+az keyvault update \
+  --name kv-<app>-<env>-<region-short> \
+  --default-action Deny
+```
+
+Traffic stays on the Azure backbone, but the vault keeps its public FQDN (requests from outside the allow-list are rejected at the firewall, not dropped at DNS).
+
+**Option C — Private Endpoint (strictest, preferred for regulated workloads).** Vault gets a private IP inside your VNet; the public FQDN resolves to that private IP via Azure Private DNS.
+
+```bash
+az network private-endpoint create \
+  --name pe-kv-<app>-<env> \
+  --resource-group rg-<app>-<env> \
+  --vnet-name vnet-<app>-<env> \
+  --subnet snet-private-endpoints \
+  --private-connection-resource-id $(az keyvault show --name kv-<app>-<env>-<region-short> --query id -o tsv) \
+  --group-id vault \
+  --connection-name kv-connection
+
+az keyvault update \
+  --name kv-<app>-<env>-<region-short> \
+  --public-network-access Disabled
+```
+
+Requires a `privatelink.vaultcore.azure.net` Private DNS zone linked to the VNet. If that's missing, `kv-*.vault.azure.net` resolves to the public IP and the connection is refused. This is the #1 cause of "it works in dev, breaks in prod" with Private Endpoint — verify DNS resolution from inside the VNet with `nslookup kv-<app>-<env>-<region-short>.vault.azure.net` before flipping `--public-network-access Disabled`.
+
+**Whichever you pick:** record the choice in the env runbook so on-call can distinguish a network outage (DNS/firewall) from an RBAC outage (403 from the data plane).
+
+### 4.6 Diagnostic logging
+
+Key Vault emits two diagnostic log categories. Ship both to Log Analytics (or an archival storage account) for audit compliance.
+
+```bash
+# Create a dedicated workspace if one doesn't exist per env
+az monitor log-analytics workspace create \
+  --resource-group rg-<app>-<env> \
+  --workspace-name log-<app>-<env>
+
+# Attach diagnostics to the vault
+az monitor diagnostic-settings create \
+  --name kv-audit \
+  --resource $(az keyvault show --name kv-<app>-<env>-<region-short> --query id -o tsv) \
+  --workspace $(az monitor log-analytics workspace show --resource-group rg-<app>-<env> --workspace-name log-<app>-<env> --query id -o tsv) \
+  --logs '[
+    {"category": "AuditEvent", "enabled": true, "retentionPolicy": {"enabled": true, "days": 365}},
+    {"category": "AzurePolicyEvaluationDetails", "enabled": true, "retentionPolicy": {"enabled": true, "days": 90}}
+  ]' \
+  --metrics '[{"category": "AllMetrics", "enabled": true, "retentionPolicy": {"enabled": true, "days": 30}}]'
+```
+
+What each category captures:
+
+- **`AuditEvent`** (landed in `AzureDiagnostics` / `KeyVaultAuditLogs` table) — every data-plane operation: secret reads, writes, deletes, plus control-plane changes. This is the forensic log. Keep for ≥1 year for most compliance regimes.
+- **`AzurePolicyEvaluationDetails`** — Azure Policy evaluations against the vault. Useful for proving policy compliance (e.g., "vault must have purge protection on"). Keep for the audit cycle (typically 90 days).
+- **`AllMetrics`** — availability, saturation, throttling. Feed into alerting.
+
+Sample KQL queries for the "did we just get breached?" moment — save these as workbook queries:
+
+```kql
+// Unusual reader identities over the last hour
+KeyVaultAuditLogs
+| where TimeGenerated > ago(1h)
+| where OperationName == "SecretGet"
+| summarize count() by identity_claim_appid_g, identity_claim_oid_g
+| order by count_ desc
+
+// Failed accesses (403s) — often the first signal of a misconfigured reader or an intruder
+KeyVaultAuditLogs
+| where TimeGenerated > ago(24h)
+| where ResultSignature startswith "Forbidden"
+| project TimeGenerated, CallerIpAddress, identity_claim_oid_g, OperationName, Resource
+```
+
+**Alerts worth creating:**
+
+- Secret read from an IP outside the expected compute egress range.
+- Control-plane op (`SecretDelete`, `VaultDelete`, role assignment change) outside change-window.
+- Rate of `Forbidden` responses exceeds a baseline (indicator of either misconfig during a deploy or a brute-force attempt).
+
+### 4.7 Backup & recovery mechanics
+
+Recovery hinges on two features enabled at vault creation (§4.1): **soft-delete** and **purge protection**.
+
+- **Soft-deleted secret** — recoverable within the retention window (90 days recommended):
+
+  ```bash
+  az keyvault secret recover \
+    --vault-name kv-<app>-<env>-<region-short> \
+    --name azure-ad-client-secret
+  ```
+
+- **Soft-deleted vault** — recoverable until retention expires:
+
+  ```bash
+  az keyvault recover --name kv-<app>-<env>-<region-short> --location <region>
+  ```
+
+- **With purge protection on, neither a compromised admin nor a misclick can force-delete before retention expires.** That's the design goal. It also means you cannot "start over" by purging + recreating — plan the vault name and region once.
+
+- **Cross-region DR**: Key Vault is a single-region resource. For multi-region DR, maintain a mirror vault in the paired region and replicate secret *writes* via your rotation process (not by copying Azure Backup snapshots — those don't exist for Key Vault). Most single-region apps don't need this; flag it only if your compliance regime mandates a regional failover capability.
 
 ---
 
@@ -443,6 +610,10 @@ These are the ones that actually bite in prod. Verify each during the first depl
 
 8. **In-memory agent memory resets on restart.** `getAgent()` uses LangGraph's `MemorySaver` (`src/lib/agent/agent.ts`). Every pod restart wipes conversation state. If that matters in prod, swap to `@langchain/langgraph-checkpoint-postgres`. Note in release notes.
 
+9. **Post-logout redirect URI must be registered in Entra.** The Entra app registration must list **both** `https://<prod-host>/auth/callback` **and** `https://<prod-host>/auth/signin` under **Web → Redirect URIs** (§3.1, §3.3). If only the callback is registered, federated sign-out strands users on Microsoft's generic "You signed out of your account" page with no path back to the app — the sign-out appears to succeed but the user experience is broken. Verify by running `az ad app show --id <AZURE_AD_CLIENT_ID> --query "web.redirectUris"` after deploy; both URIs must be in the list.
+
+10. **Single-replica assumption for the `post_logout` cookie.** The cookie that tells `/auth/signin` to force `prompt=login` (§3.3.1) is set by `/auth/signout` on replica A and read by `/auth/signin` on (potentially) replica B. Because the cookie lives in the browser, not server memory, this works across replicas — but only if sticky sessions aren't required for some *other* reason (they are for SSE, see #7). If you front-door across replicas, verify the `post_logout` cookie survives the redirect chain (scoped `Path=/auth/signin`, `SameSite=Lax` — a cross-site referer during the `login.microsoftonline.com` → `/auth/signin` hop will still send it, but verify in DevTools on first prod deploy).
+
 ---
 
 ## 9. Post-deploy smoke test
@@ -454,7 +625,12 @@ Run through this after the first prod deploy, with a notebook open:
 3. Sign in as each break-glass user (one Admin, one Approver, one Requester).
 4. After redirect back, DevTools → Application → Cookies → `session` cookie present with `HttpOnly: true`, `Secure: true`, `SameSite: Lax`, `Path: /`.
 5. Hit any protected route → loads (no redirect loop).
-6. Sign out → `session` cookie cleared → next protected request redirects to `/auth/signin`.
+6. **Federated sign-out end-to-end.** From any protected page, click **Sign out** (or `curl -I -b session=<cookie> https://<prod-host>/auth/signout`). Expect a 302 chain:
+   - `/auth/signout` → `Set-Cookie: session=; Max-Age=0` + `Set-Cookie: post_logout=1; Path=/auth/signin; Max-Age=300` → `Location: https://login.microsoftonline.com/<tenant>/oauth2/v2.0/logout?post_logout_redirect_uri=https://<prod-host>/auth/signin&client_id=<client-id>`.
+   - Microsoft logout page (may show account picker) → `Location: https://<prod-host>/auth/signin`.
+   - `/auth/signin` sees the `post_logout` cookie, builds the authorize URL with `&prompt=login`, clears the cookie (`Max-Age=0`), and redirects to `login.microsoftonline.com/.../oauth2/v2.0/authorize`.
+   - User is forced to re-enter credentials (not silently re-authenticated). If the authorize URL lacks `prompt=login`, the `post_logout` cookie wasn't read — see §3.3.1.
+   - Any subsequent protected request before re-sign-in returns 302 to `/auth/signin`.
 7. Check the database: `SELECT entraOid, email, image IS NOT NULL as has_photo FROM "User";` — one row per user who signed in.
 8. Tamper with the session cookie (change one character) → next request → `302 /auth/signin?error=invalid_session`. This confirms the JWE integrity check is working.
 9. Force the cookie to expire (wait, or edit `exp` locally — won't re-decrypt, so just delete it) → `/auth/signin` redirect.
