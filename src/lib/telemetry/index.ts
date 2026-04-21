@@ -1,0 +1,6 @@
+export { createSpan, getCurrentSpan, addSpanAttribute, addSpanEvent } from './tracing'
+export { getMeter, createCounter, createHistogram } from './metrics'
+export type { InstrumentOptions, HistogramOptions } from './metrics'
+export { logger, childLogger } from './logger'
+export type { LogAttrs } from './logger'
+export { buildResource } from './resource'
