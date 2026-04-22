@@ -25,22 +25,37 @@ describe('metrics helpers', () => {
     expect(m).toBe(mockMeter)
   })
 
-  it('createCounter caches by name (same name returns same instrument)', async () => {
+  it('createCounter defers underlying instrument creation until first add()', async () => {
     const { createCounter } = await import('@/lib/telemetry/metrics')
-    const c1 = createCounter('agent_team.save.total', { description: 'd', unit: '1' })
-    const c2 = createCounter('agent_team.save.total')
-    expect(c1).toBe(c2)
+    const c = createCounter('agent_team.save.total', { description: 'd', unit: '1' })
+    expect(mockMeter.createCounter).not.toHaveBeenCalled()
+    c.add(1, { result: 'ok' })
     expect(mockMeter.createCounter).toHaveBeenCalledTimes(1)
+    expect(mockMeter.createCounter).toHaveBeenCalledWith(
+      'agent_team.save.total',
+      expect.objectContaining({ description: 'd', unit: '1' })
+    )
+    expect(mockCounter.add).toHaveBeenCalledWith(1, { result: 'ok' }, undefined)
   })
 
-  it('createHistogram caches by name and passes advice through', async () => {
+  it('createCounter resolves the underlying counter once and reuses it', async () => {
+    const { createCounter } = await import('@/lib/telemetry/metrics')
+    const c = createCounter('agent_team.save.total')
+    c.add(1)
+    c.add(1)
+    c.add(1)
+    expect(mockMeter.createCounter).toHaveBeenCalledTimes(1)
+    expect(mockCounter.add).toHaveBeenCalledTimes(3)
+  })
+
+  it('createHistogram defers creation and passes advice through on first record()', async () => {
     const { createHistogram } = await import('@/lib/telemetry/metrics')
-    const h1 = createHistogram('agent_team.save.duration', {
+    const h = createHistogram('agent_team.save.duration', {
       unit: 'ms',
       advice: { explicitBucketBoundaries: [10, 100, 1000] },
     })
-    const h2 = createHistogram('agent_team.save.duration')
-    expect(h1).toBe(h2)
+    expect(mockMeter.createHistogram).not.toHaveBeenCalled()
+    h.record(42)
     expect(mockMeter.createHistogram).toHaveBeenCalledTimes(1)
     expect(mockMeter.createHistogram).toHaveBeenCalledWith(
       'agent_team.save.duration',
@@ -49,16 +64,22 @@ describe('metrics helpers', () => {
         advice: { explicitBucketBoundaries: [10, 100, 1000] },
       })
     )
+    expect(mockHistogram.record).toHaveBeenCalledWith(42, undefined, undefined)
   })
 
-  it('different names return different counter instruments', async () => {
+  it('different names create distinct underlying instruments on first use', async () => {
     const { createCounter } = await import('@/lib/telemetry/metrics')
     const c1 = createCounter('a.total')
     const c2 = createCounter('b.total')
+    c1.add(1)
+    c2.add(1)
     expect(mockMeter.createCounter).toHaveBeenCalledTimes(2)
-    // both resolve to mockCounter since the mock always returns the same object,
-    // but the important assertion is the cache key: two distinct createCounter calls were made
-    expect(c1).toBeDefined()
-    expect(c2).toBeDefined()
+    expect(mockMeter.createCounter).toHaveBeenNthCalledWith(1, 'a.total', expect.any(Object))
+    expect(mockMeter.createCounter).toHaveBeenNthCalledWith(2, 'b.total', expect.any(Object))
+  })
+
+  it('createCounter throws when name is empty', async () => {
+    const { createCounter } = await import('@/lib/telemetry/metrics')
+    expect(() => createCounter('')).toThrow('createCounter: name is required')
   })
 })

@@ -10,13 +10,17 @@
  * or unbounded values on a metric attribute. Those belong on spans and log records.
  * Violating this rule will blow up Prometheus memory.
  */
-import { metrics, type Meter, type Counter, type Histogram } from '@opentelemetry/api'
+import {
+  metrics,
+  type Meter,
+  type Counter,
+  type Histogram,
+  type MetricAttributes,
+  type Context,
+} from '@opentelemetry/api'
 
 const METER_NAME = 'nextjs-boilerplate'
 const METER_VERSION = '0.1.0'
-
-const counters = new Map<string, Counter>()
-const histograms = new Map<string, Histogram>()
 
 export function getMeter(name: string = METER_NAME): Meter {
   return metrics.getMeter(name, METER_VERSION)
@@ -31,27 +35,46 @@ export interface HistogramOptions extends InstrumentOptions {
   advice?: { explicitBucketBoundaries?: number[] }
 }
 
+// Instruments are created lazily on first use so that callers can cache them at
+// module scope without racing SDK startup. If a service module is imported
+// before the MeterProvider is registered, eagerly-created instruments bind to a
+// no-op meter and silently drop every observation for the process lifetime.
+
 export function createCounter(name: string, opts: InstrumentOptions = {}): Counter {
   if (!name) throw new Error('createCounter: name is required')
-  const cached = counters.get(name)
-  if (cached) return cached
-  const counter = getMeter().createCounter(name, {
-    description: opts.description,
-    unit: opts.unit,
-  })
-  counters.set(name, counter)
-  return counter
+  let delegate: Counter | null = null
+  const resolve = (): Counter => {
+    if (!delegate) {
+      delegate = getMeter().createCounter(name, {
+        description: opts.description,
+        unit: opts.unit,
+      })
+    }
+    return delegate
+  }
+  return {
+    add(value: number, attributes?: MetricAttributes, context?: Context) {
+      resolve().add(value, attributes, context)
+    },
+  }
 }
 
 export function createHistogram(name: string, opts: HistogramOptions = {}): Histogram {
   if (!name) throw new Error('createHistogram: name is required')
-  const cached = histograms.get(name)
-  if (cached) return cached
-  const histogram = getMeter().createHistogram(name, {
-    description: opts.description,
-    unit: opts.unit,
-    advice: opts.advice,
-  })
-  histograms.set(name, histogram)
-  return histogram
+  let delegate: Histogram | null = null
+  const resolve = (): Histogram => {
+    if (!delegate) {
+      delegate = getMeter().createHistogram(name, {
+        description: opts.description,
+        unit: opts.unit,
+        advice: opts.advice,
+      })
+    }
+    return delegate
+  }
+  return {
+    record(value: number, attributes?: MetricAttributes, context?: Context) {
+      resolve().record(value, attributes, context)
+    },
+  }
 }
